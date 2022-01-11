@@ -140,14 +140,15 @@ condition:
 action:
   # initially send notification immediately after event is triggered
   # Web UI notifications are sent in addition to mobile notifications
-  - conditions: "{{ integrated_notification }}" # web UI
-    sequence:
-      - service: persistent_notification.create
-        data:
-          title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-          message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
-          notification_id: '{{ id }}'
-      - service: python_script.clear_notifications
+  - choose:
+    - conditions: "{{ integrated_notification }}" # web UI
+      sequence:
+        - service: persistent_notification.create
+          data:
+            title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+            message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
+            notification_id: '{{ id }}'
+        - service: python_script.clear_notifications
   - choose: # mobile app
     - conditions: "{{ not group_target }}"
       sequence:
@@ -172,13 +173,15 @@ action:
             attachment: # iOS
               url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
   # Signal Notification
-  - conditions: "{{ signal_service }}"
-    service: "notify.{{ signal_service }}"
-    data:
-      message: '1. A {{ label }} was detected on the {{ camera_name }} camera.'
-      data:
-        urls:
-          - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+  - choose:
+    - conditions: "{{ signal_service }}"
+      sequence:
+        - service: "notify.{{ signal_service }}"
+          data:
+            message: '1. A {{ label }} was detected on the {{ camera_name }} camera.'
+            data:
+              urls:
+                - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
   # update sent notification after event has concluded
   - repeat:
       sequence:
@@ -194,15 +197,16 @@ action:
         - condition: template
           value_template: "{{ wait.trigger.payload_json['type'] == 'end' }}"
         # Send web UI notification
-        - conditions: "{{ integrated_notification }}"  # web UI
-          sequence:
-            - service: persistent_notification.create
-              data:
-                title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-                message: >
-                  <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
-                  ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
-                notification_id: '{{ id }}'
+        - choose:
+          - conditions: "{{ integrated_notification }}"  # web UI
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+                  message: >
+                    <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
+                    ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
+                  notification_id: '{{ id }}'
         # Send mobile notification
         - choose:
           - conditions: "{{ not group_target }}"
@@ -256,15 +260,17 @@ action:
                       title: Silence Notifications
                       destructive: true
         # Signal Notification
-        - conditions: "{{ signal_service }}"
-          service: "notify.{{ signal_service }}"
-          data:
-            message: >
-              2. A {{ label }} was detected on the {{ camera_name }} camera.
-              {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
-            data:
-              urls:
-                - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+        - choose:
+          - conditions: "{{ signal_service }}"
+            sequence:
+              - service: "notify.{{ signal_service }}"
+                data:
+                  message: >
+                    2. A {{ label }} was detected on the {{ camera_name }} camera.
+                    {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
+                  data:
+                    urls:
+                      - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
       until: "{{ wait.trigger.payload_json['type'] == 'end' }}"
   - wait_for_trigger:
     - platform: event
