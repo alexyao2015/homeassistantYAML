@@ -174,7 +174,7 @@ action:
               url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
   # Signal Notification
   - choose:
-    - conditions: "{{ signal_service }}"
+    - conditions: "{{ not not signal_service }}"
       sequence:
         - service: "notify.{{ signal_service }}"
           data:
@@ -261,7 +261,7 @@ action:
                       destructive: true
         # Signal Notification
         - choose:
-          - conditions: "{{ signal_service }}"
+          - conditions: "{{ not not signal_service }}"
             sequence:
               - service: "notify.{{ signal_service }}"
                 data:
