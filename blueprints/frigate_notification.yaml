@@ -97,7 +97,7 @@ blueprint:
     integrated_notification:
       name: (Optional) Integrated Web UI Notifications
       description: Show notification in Web UI (must have automation to clear old notifications installed)
-      default: true
+      default: false
       selector:
         boolean:
     signal_service:
