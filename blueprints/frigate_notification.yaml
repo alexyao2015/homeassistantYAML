@@ -2,7 +2,7 @@ blueprint:
   name: Frigate Notification
   description: |
     ## This is a fork of hunterjm's blueprint originally located at https://gist.github.com/hunterjm/23c1588a9f2b8b9c2a62ffc364e17f8c
-    
+
     ## Frigate Mobile App Notification
     This blueprint will send a notification to your device when a Frigate event for the selected camera is fired. The notification will initially include the thumbnail of the detection, but will update to include actionable notifications allowing you to view the saved clip/snapshot when available, or silence the notification for a configurable amount of time.
     With this blueprint, you may send the notification to multiple devices by leaving "Device" blank and instead use a [notification group][1].
@@ -27,7 +27,7 @@ blueprint:
     [2]: https://blakeblackshear.github.io/frigate/configuration/cameras#zones
     [3]: https://blakeblackshear.github.io/frigate/configuration/objects
   domain: automation
-  source_url: https://gist.github.com/hunterjm/23c1588a9f2b8b9c2a62ffc364e17f8c
+  source_url: https://github.com/alexyao2015/homeassistantYAML/blob/master/blueprints/frigate_notification.yaml
   input:
     camera:
       name: Frigate Camera
@@ -94,6 +94,16 @@ blueprint:
           max: 300
           min: 0
           unit_of_measurement: minutes
+    integrated_notification:
+      name: (Optional) Integrated Web UI Notifications
+      description: Show notification in Web UI (must have automation to clear old notifications installed)
+      default: true
+      selector:
+        boolean:
+    signal_service:
+      name: (Optional) Signal Service
+      description: The service to use for sending a notification using Signal Messenger.
+      default: ""
 
 mode: single
 max_exceeded: silent
@@ -119,6 +129,8 @@ variables:
   input_labels: !input labels
   labels: "{{ input_labels | list }}"
   presence_entity: !input presence_filter
+  integrated_notification: !input integrated_notification
+  signal_service: !input signal_service
 condition:
   - "{{ type != 'end' }}"
   - "{{ not zone_only or entered_zones|length > 0 }}"
@@ -126,7 +138,17 @@ condition:
   - "{{ not labels|length or object in labels }}"
   - "{{ not presence_entity or not is_state(presence_entity, 'home') }}"
 action:
-  - choose:
+  # initially send notification immediately after event is triggered
+  # Web UI notifications are sent in addition to mobile notifications
+  - conditions: "{{ integrated_notification }}" # web UI
+    sequence:
+      - service: persistent_notification.create
+        data:
+          title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+          message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
+          notification_id: '{{ id }}'
+      - service: python_script.clear_notifications
+  - choose: # mobile app
     - conditions: "{{ not group_target }}"
       sequence:
         - device_id: !input notify_device
@@ -136,9 +158,9 @@ action:
           data: 
             tag: '{{ id }}'
             group: 'frigate-notification-{{ camera }}'
-            image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
+            image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
             attachment: # iOS
-              url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
+              url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
     default:
       - service: "notify.{{ group_target }}"
         data:
@@ -146,9 +168,18 @@ action:
           data:
             tag: '{{ id }}'
             group: 'frigate-notification-{{ camera }}'
-            image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
+            image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
             attachment: # iOS
-              url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
+              url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
+  # Signal Notification
+  - conditions: "{{ signal_service }}"
+    service: "notify.{{ signal_service }}"
+    data:
+      message: '1. A {{ label }} was detected on the {{ camera_name }} camera.'
+      data:
+        urls:
+          - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+  # update sent notification after event has concluded
   - repeat:
       sequence:
         - wait_for_trigger:
@@ -159,8 +190,20 @@ action:
           timeout:
             minutes: 2
           continue_on_timeout: false
+        # only send on event end
         - condition: template
           value_template: "{{ wait.trigger.payload_json['type'] == 'end' }}"
+        # Send web UI notification
+        - conditions: "{{ integrated_notification }}"  # web UI
+          sequence:
+            - service: persistent_notification.create
+              data:
+                title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+                message: >
+                  <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
+                  ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
+                notification_id: '{{ id }}'
+        # Send mobile notification
         - choose:
           - conditions: "{{ not group_target }}"
             sequence:
@@ -212,6 +255,16 @@ action:
                     - action: 'silence-{{ camera }}'
                       title: Silence Notifications
                       destructive: true
+        # Signal Notification
+        - conditions: "{{ signal_service }}"
+          service: "notify.{{ signal_service }}"
+          data:
+            message: >
+              2. A {{ label }} was detected on the {{ camera_name }} camera.
+              {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
+            data:
+              urls:
+                - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
       until: "{{ wait.trigger.payload_json['type'] == 'end' }}"
   - wait_for_trigger:
     - platform: event
