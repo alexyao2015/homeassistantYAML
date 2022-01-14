@@ -173,15 +173,15 @@ action:
             attachment: # iOS
               url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
   # Signal Notification
-  - choose:
-    - conditions: "{{ not not signal_service }}"
-      sequence:
-        - service: "notify.{{ signal_service }}"
-          data:
-            message: '1. A {{ label }} was detected on the {{ camera_name }} camera.'
-            data:
-              urls:
-                - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+  # - choose:
+  #   - conditions: "{{ not not signal_service }}"
+  #     sequence:
+  #       - service: "notify.{{ signal_service }}"
+  #         data:
+  #           message: '1. A {{ label }} was detected on the {{ camera_name }} camera.'
+  #           data:
+  #             urls:
+  #               - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
   # update sent notification after event has concluded
   - repeat:
       sequence:
