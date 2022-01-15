@@ -104,6 +104,24 @@ blueprint:
       name: (Optional) Signal Service
       description: The service to use for sending a notification using Signal Messenger.
       default: ""
+    enable_time_condition:
+      name: (Optional) Enable Time Condition
+      description: Enable the time condition to only run the automation when the time is between the start and end times.
+      default: false
+      selector:
+        boolean:
+    time_condition_start:
+      name: (Optional) Time Condition Start
+      description: The start time for the time condition.
+      default: "8:00:00"
+      selector:
+        time:
+    time_condition_end:
+      name: (Optional) Time Condition End
+      description: The end time for the time condition.
+      default: "22:00:00"
+      selector:
+        time:
 
 mode: single
 max_exceeded: silent
@@ -131,12 +149,21 @@ variables:
   presence_entity: !input presence_filter
   integrated_notification: !input integrated_notification
   signal_service: !input signal_service
+  enable_time_condition: !input enable_time_condition
+  time_condition_start: !input time_condition_start
+  time_condition_end: !input time_condition_end
 condition:
   - "{{ type != 'end' }}"
   - "{{ not zone_only or entered_zones|length > 0 }}"
   - "{{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}"
   - "{{ not labels|length or object in labels }}"
   - "{{ not presence_entity or not is_state(presence_entity, 'home') }}"
+  - condition: or
+    conditions:
+      - "{{ not enable_time_condition }}"
+      - condition: time
+        before: "{{ time_condition_end }}"
+        after: "{{ time_condition_start }}"
 action:
   # initially send notification immediately after event is triggered
   # Web UI notifications are sent in addition to mobile notifications
@@ -147,7 +174,7 @@ action:
           data:
             title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
             message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
-            notification_id: '{{ id }}'
+            notification_id: 'frigate-{{ id }}'
         - service: python_script.clear_notifications
   - choose: # mobile app
     - conditions: "{{ not group_target }}"
@@ -206,7 +233,7 @@ action:
                   message: >
                     <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
                     ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
-                  notification_id: '{{ id }}'
+                  notification_id: 'frigate-{{ id }}'
         # Send mobile notification
         - choose:
           - conditions: "{{ not group_target }}"
