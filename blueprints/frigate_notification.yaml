@@ -33,14 +33,14 @@ blueprint:
       name: Frigate Camera
       description: The name of the camera as defined in your frigate configuration.
     notify_device:
-      name: Device
+      name: (Optional) Device
       description: The device must run the official Home Assistant app to receive notifications.
       default: false
       selector:
         device:
           integration: mobile_app
     notify_group:
-      name: Notification Group
+      name: (Optional) Notification Group
       description: The name of the notification group to call.
       default: ""
     base_url:
@@ -140,6 +140,7 @@ variables:
   entered_zones: "{{ trigger.payload_json['after']['entered_zones'] }}"
   type: "{{ trigger.payload_json['type'] }}"
   base_url: !input base_url
+  notify_device: !input notify_device
   group_target: !input notify_group
   zone_only: !input zone_filter
   input_zones: !input zones
@@ -174,29 +175,33 @@ action:
             message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
             notification_id: 'frigate-{{ id }}'
         - service: python_script.clear_notifications
-  - choose: # mobile app
-    - conditions: "{{ not group_target }}"
+  # Don't send mobile notifications if no group or device is specified
+  - choose:
+    - conditions: "{{ group_target or notify_device }}" 
       sequence:
-        - device_id: !input notify_device
-          domain: mobile_app
-          type: notify
-          message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-          data: 
-            tag: '{{ id }}'
-            group: 'frigate-notification-{{ camera }}'
-            image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-            attachment: # iOS
-              url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
-    default:
-      - service: "notify.{{ group_target }}"
-        data:
-          message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-          data:
-            tag: '{{ id }}'
-            group: 'frigate-notification-{{ camera }}'
-            image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-            attachment: # iOS
-              url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
+        - choose: # mobile app
+          - conditions: "{{ not group_target }}"
+            sequence:
+              - device_id: !input notify_device
+                domain: mobile_app
+                type: notify
+                message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+                data: 
+                  tag: '{{ id }}'
+                  group: 'frigate-notification-{{ camera }}'
+                  image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
+                  attachment: # iOS
+                    url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
+          default:
+            - service: "notify.{{ group_target }}"
+              data:
+                message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+                data:
+                  tag: '{{ id }}'
+                  group: 'frigate-notification-{{ camera }}'
+                  image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
+                  attachment: # iOS
+                    url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
   # Signal Notification
   # - choose:
   #   - conditions: "{{ not not signal_service }}"
@@ -233,57 +238,61 @@ action:
                     ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
                   notification_id: 'frigate-{{ id }}'
         # Send mobile notification
+        # Don't send mobile notifications if no group or device is specified
         - choose:
-          - conditions: "{{ not group_target }}"
+          - conditions: "{{ group_target or notify_device }}"
             sequence:
-              - device_id: !input notify_device
-                domain: mobile_app
-                type: notify
-                message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-                data: 
-                  tag: '{{ id }}'
-                  group: 'frigate-notification-{{ camera }}'
-                  url: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # iOS
-                  clickAction: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # Android
-                  image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-                  sound: none
-                  attachment: # iOS
-                    url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
-                    # lazy: true
-                  actions:
-                    - action: URI
-                      title: View Clip
-                      uri: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
-                    - action: URI
-                      title: View Snapshot
-                      uri: '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
-                    - action: 'silence-{{ camera }}'
-                      title: Silence Notifications
-                      destructive: true
-          default:
-            - service: "notify.{{ group_target }}"
-              data:
-                message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-                data:
-                  tag: '{{ id }}'
-                  group: 'frigate-notification-{{ camera }}'
-                  url: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # iOS
-                  clickAction: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # Android
-                  image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-                  sound: none
-                  attachment: # iOS
-                    url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
-                    # lazy: true
-                  actions:
-                    - action: URI
-                      title: View Clip
-                      uri: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
-                    - action: URI
-                      title: View Snapshot
-                      uri: '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
-                    - action: 'silence-{{ camera }}'
-                      title: Silence Notifications
-                      destructive: true
+              - choose:
+                - conditions: "{{ not group_target }}"
+                  sequence:
+                    - device_id: !input notify_device
+                      domain: mobile_app
+                      type: notify
+                      message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+                      data: 
+                        tag: '{{ id }}'
+                        group: 'frigate-notification-{{ camera }}'
+                        url: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # iOS
+                        clickAction: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # Android
+                        image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
+                        sound: none
+                        attachment: # iOS
+                          url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
+                          # lazy: true
+                        actions:
+                          - action: URI
+                            title: View Clip
+                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
+                          - action: URI
+                            title: View Snapshot
+                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+                          - action: 'silence-{{ camera }}'
+                            title: Silence Notifications
+                            destructive: true
+                default:
+                  - service: "notify.{{ group_target }}"
+                    data:
+                      message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+                      data:
+                        tag: '{{ id }}'
+                        group: 'frigate-notification-{{ camera }}'
+                        url: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # iOS
+                        clickAction: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # Android
+                        image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
+                        sound: none
+                        attachment: # iOS
+                          url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
+                          # lazy: true
+                        actions:
+                          - action: URI
+                            title: View Clip
+                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
+                          - action: URI
+                            title: View Snapshot
+                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+                          - action: 'silence-{{ camera }}'
+                            title: Silence Notifications
+                            destructive: true
         # Signal Notification
         - choose:
           - conditions: "{{ not not signal_service }}"
@@ -291,7 +300,7 @@ action:
               - service: "notify.{{ signal_service }}"
                 data:
                   message: >
-                    2. A {{ label }} was detected on the {{ camera_name }} camera.
+                    A {{ label }} was detected on the {{ camera_name }} camera.
                     {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
                   data:
                     urls:
