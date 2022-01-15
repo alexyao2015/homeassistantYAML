@@ -150,8 +150,6 @@ variables:
   integrated_notification: !input integrated_notification
   signal_service: !input signal_service
   enable_time_condition: !input enable_time_condition
-  time_condition_start: !input time_condition_start
-  time_condition_end: !input time_condition_end
 condition:
   - "{{ type != 'end' }}"
   - "{{ not zone_only or entered_zones|length > 0 }}"
@@ -162,8 +160,8 @@ condition:
     conditions:
       - "{{ not enable_time_condition }}"
       - condition: time
-        before: "{{ time_condition_end }}"
-        after: "{{ time_condition_start }}"
+        before: !input time_condition_end
+        after: !input time_condition_start
 action:
   # initially send notification immediately after event is triggered
   # Web UI notifications are sent in addition to mobile notifications
