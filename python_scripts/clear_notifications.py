@@ -1,5 +1,5 @@
 for notif in hass.states.entity_ids("persistent_notification"):
-    if "frigate-" not in notif:
+    if "frigate_" not in notif:
         continue
     tm_diff = dt_util.utcnow() - hass.states.get(notif).last_changed
     if tm_diff.seconds >= 86400:

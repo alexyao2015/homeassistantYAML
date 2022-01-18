@@ -173,7 +173,7 @@ action:
           data:
             title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
             message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
-            notification_id: 'frigate-{{ id }}'
+            notification_id: 'frigate_{{ id }}'
         - service: python_script.clear_notifications
   # Don't send mobile notifications if no group or device is specified
   - choose:
@@ -236,7 +236,7 @@ action:
                   message: >
                     <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
                     ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
-                  notification_id: 'frigate-{{ id }}'
+                  notification_id: 'frigate_{{ id }}'
         # Send mobile notification
         # Don't send mobile notifications if no group or device is specified
         - choose:
