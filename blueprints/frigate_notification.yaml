@@ -122,7 +122,22 @@ blueprint:
       default: "22:00:00"
       selector:
         time:
-
+    tts_service:
+      name: (Optional) TTS Service
+      description: The service name to use for sending a notification using TTS.
+      default: ""
+    media_player_tts:
+      name: (Optional) Media Players to use for TTS
+      description: A list (-) of media players you wish to use for TTS, including media_player.
+      default: []
+      selector:
+        object:
+    android_tv_services:
+      name: (Optional) Android TV Services
+      description: A list (-) of TV Notifications for Android TV service names, excluding notify.
+      default: []
+      selector:
+        object:
 mode: single
 max_exceeded: silent
 
@@ -151,6 +166,11 @@ variables:
   integrated_notification: !input integrated_notification
   signal_service: !input signal_service
   enable_time_condition: !input enable_time_condition
+  tts_service: !input tts_service
+  input_media_player_tts: !input media_player_tts
+  media_player_tts: "{{ input_media_player_tts | list }}"
+  android_tv_services_input: !input android_tv_services
+  android_tv_services: "{{ android_tv_services_input | list }}"
 condition:
   - "{{ type != 'end' }}"
   - "{{ not zone_only or entered_zones|length > 0 }}"
@@ -175,6 +195,23 @@ action:
             message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
             notification_id: 'frigate_{{ id }}'
         - service: python_script.clear_notifications
+  - choose:
+    - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}" # TTS
+      sequence:
+        - service: "tts.{{ tts_service }}"
+          data:
+            entity_id: "{{ media_player_tts }}"
+            message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+  # Android tv notification
+  - choose:
+    - conditions: "{{ android_tv_services|length > 0 }}"
+      sequence:
+        - service: python_script.send_android_tv_notifications
+          data:
+            services: "{{ android_tv_services }}"
+            title: Security Alert
+            message: "A {{ label }} was detected on the {{ camera_name }} camera."
+            image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
   # Don't send mobile notifications if no group or device is specified
   - choose:
     - conditions: "{{ group_target or notify_device }}" 
@@ -305,6 +342,16 @@ action:
                   data:
                     urls:
                       - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+        # Android tv notification
+        - choose:
+          - conditions: "{{ android_tv_services|length > 0 }}"
+            sequence:
+              - service: python_script.send_android_tv_notifications
+                data:
+                  services: "{{ android_tv_services }}"
+                  title: Security Alert
+                  message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                  image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
       until: "{{ wait.trigger.payload_json['type'] == 'end' }}"
   - wait_for_trigger:
     - platform: event
