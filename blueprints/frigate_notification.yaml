@@ -151,7 +151,7 @@ variables:
   camera: "{{ trigger.payload_json['after']['camera'] }}"
   camera_name: "{{ camera | replace('_', ' ') | title }}"
   object: "{{ trigger.payload_json['after']['label'] }}"
-  stationary: "{{ trigger.payload_json['stationary'] }}"
+  stationary: "{{ trigger.payload_json['after']['stationary'] }}"
   label: "{{ object | title }}"
   entered_zones: "{{ trigger.payload_json['after']['entered_zones'] }}"
   type: "{{ trigger.payload_json['type'] }}"
@@ -264,7 +264,7 @@ action:
           continue_on_timeout: false
         # only send on event end or if the object stopped moving
         - condition: template
-          value_template: "{{ wait.trigger.payload_json['type'] == 'end' or wait.trigger.payload_json['stationary'] == true }}"
+          value_template: "{{ wait.trigger.payload_json['type'] == 'end' or wait.trigger.payload_json['after']['stationary'] == true }}"
         # Send web UI notification
         - choose:
           - conditions: "{{ integrated_notification }}"  # web UI
