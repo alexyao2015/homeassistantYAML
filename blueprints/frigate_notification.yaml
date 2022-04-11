@@ -126,6 +126,15 @@ blueprint:
       name: (Optional) TTS Service
       description: The service name to use for sending a notification using TTS.
       default: ""
+    tts_volume_level:
+      name: (Optional) TTS Volume Level
+      description: The volume to play TTS at.
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.05
     media_player_tts:
       name: (Optional) Media Players to use for TTS
       description: A list (-) of media players you wish to use for TTS, including media_player.
@@ -167,9 +176,12 @@ variables:
   integrated_notification: !input integrated_notification
   signal_service: !input signal_service
   enable_time_condition: !input enable_time_condition
+
   tts_service: !input tts_service
   input_media_player_tts: !input media_player_tts
   media_player_tts: "{{ input_media_player_tts | list }}"
+  tts_volume_level: !input tts_volume_level
+
   android_tv_services_input: !input android_tv_services
   android_tv_services: "{{ android_tv_services_input | list }}"
 condition:
@@ -200,10 +212,15 @@ action:
   - choose:
     - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}" # TTS
       sequence:
-        - service: "tts.{{ tts_service }}"
+        - service: script.turn_on
+          target:
+            entity_id: 'script.play_tts_at_volume'
           data:
-            entity_id: "{{ media_player_tts }}"
-            message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+            variables:
+              media_player: "{{ media_player_tts }}"
+              volume_level: "{{ tts_volume_level }}"
+              tts_service: "tts.{{ tts_service }}"
+              message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
   # Android tv notification
   - choose:
     - conditions: "{{ android_tv_services|length > 0 }}"

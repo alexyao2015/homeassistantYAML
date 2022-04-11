@@ -1,0 +1,52 @@
+# requires full entity ids
+play_tts_at_volume:
+  alias: Play TTS at Volume
+  variables:
+    media_player: "{{ media_player }}"
+    volume_level: "{{ volume_level }}"
+    tts_service: "{{ tts_service }}"
+    message: "{{ message }}"
+  sequence:
+    - choose:
+      - conditions: "{{ not not media_player and not not volume_level and not not tts_service and not not message }}"
+        sequence:
+          # turn on if not already on
+          - choose:
+            - conditions: "{{ states(media_player) != 'idle' }}"
+              sequence:
+                - service: media_player.turn_on
+                  target:
+                    entity_id: "{{ media_player }}"
+                # Wait for idle with timeout
+                - wait_template: "{{ states(media_player) == 'idle' }}"
+                  timeout: "00:00:05"
+          # store the current volume level
+          - variables:
+              old_volume_level: "{{ state_attr(media_player, 'volume_level') or volume_level }}"
+          # set the volume level
+          - service: media_player.volume_set
+            data:
+              volume_level: "{{ volume_level }}"
+            target:
+              entity_id: "{{ media_player }}"
+          # start message
+          - service: "{{ tts_service }}"
+            data:
+              entity_id: "{{ media_player }}"
+              message: "{{ message }}"
+          # Wait for idle with timeout
+          - wait_template: "{{ states(media_player) == 'idle' }}"
+            timeout: "00:00:10"
+          # set the volume level back
+          - service: media_player.volume_set
+            data:
+              volume_level: "{{ old_volume_level }}"
+            target:
+              entity_id: "{{ media_player }}"
+
+      default:
+        - service: system_log.write
+          data:
+            level: warning
+            logger: script.play_tts_at_volume
+            message: "Not all variables were provided! media_player:  {{ media_player }}; volume_level: {{ volume_level }}; tts_service: {{ tts_service }}; message: {{ message }}"
