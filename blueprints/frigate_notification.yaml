@@ -212,15 +212,19 @@ action:
   - choose:
     - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}" # TTS
       sequence:
-        - service: script.turn_on
-          target:
-            entity_id: 'script.play_tts_at_volume'
-          data:
-            variables:
-              media_player: "{{ media_player_tts }}"
-              volume_level: "{{ tts_volume_level }}"
-              tts_service: "tts.{{ tts_service }}"
-              message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+        - alias: "Turn on every media_player"
+          repeat:
+            count: "{{ media_player_tts|length }}"
+            sequence:
+              - service: script.turn_on
+                target:
+                  entity_id: 'script.play_tts_at_volume'
+                data:
+                  variables:
+                    media_player: "{{ media_player_tts[repeat.index - 1] }}"
+                    volume_level: "{{ tts_volume_level }}"
+                    tts_service: "tts.{{ tts_service }}"
+                    message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
   # Android tv notification
   - choose:
     - conditions: "{{ android_tv_services|length > 0 }}"
