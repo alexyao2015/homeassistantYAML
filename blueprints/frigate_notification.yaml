@@ -163,6 +163,7 @@ variables:
   stationary: "{{ trigger.payload_json['after']['stationary'] }}"
   label: "{{ object | title }}"
   entered_zones: "{{ trigger.payload_json['after']['entered_zones'] }}"
+  detection_score: "{{ trigger.payload_json['after']['top_score'] }}"
   type: "{{ trigger.payload_json['type'] }}"
   base_url: !input base_url
   notify_device: !input notify_device
@@ -268,7 +269,7 @@ action:
       sequence:
         - service: "notify.{{ signal_service }}"
           data:
-            message: '1. A {{ label }} was detected on the {{ camera_name }} camera.'
+            message: '1. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.'
             data:
               urls:
                 - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
@@ -360,7 +361,7 @@ action:
               - service: "notify.{{ signal_service }}"
                 data:
                   message: >
-                    2. A {{ label }} was detected on the {{ camera_name }} camera.
+                    2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
                     {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
                   data:
                     urls:
