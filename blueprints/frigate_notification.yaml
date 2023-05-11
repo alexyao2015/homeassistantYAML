@@ -207,86 +207,86 @@ action:
   # initially send notification immediately after event is triggered
   # Web UI notifications are sent in addition to mobile notifications
   - choose:
-    - conditions: "{{ integrated_notification }}" # web UI
-      sequence:
-        - service: persistent_notification.create
-          data:
-            title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-            message: '![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)'
-            notification_id: 'frigate_{{ id }}'
-        - service: python_script.clear_notifications
+      - conditions: "{{ integrated_notification }}" # web UI
+        sequence:
+          - service: persistent_notification.create
+            data:
+              title: "A {{ label }} was detected on the {{ camera_name }} camera."
+              message: "![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)"
+              notification_id: "frigate_{{ id }}"
+          - service: python_script.clear_notifications
   - choose:
-    - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}" # TTS
-      sequence:
-        - alias: "Turn on every media_player"
-          repeat:
-            count: "{{ media_player_tts|length }}"
-            sequence:
-              - service: script.turn_on
-                target:
-                  entity_id: 'script.play_tts_at_volume'
-                data:
-                  variables:
-                    media_player: "{{ media_player_tts[repeat.index - 1] }}"
-                    volume_level: "{{ tts_volume_level }}"
-                    tts_service: "tts.{{ tts_service }}"
-                    tts_speak_entity: "{{ tts_speak_entity }}"
-                    message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+      - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}" # TTS
+        sequence:
+          - alias: "Turn on every media_player"
+            repeat:
+              count: "{{ media_player_tts|length }}"
+              sequence:
+                - service: script.turn_on
+                  target:
+                    entity_id: "script.play_tts_at_volume"
+                  data:
+                    variables:
+                      media_player: "{{ media_player_tts[repeat.index - 1] }}"
+                      volume_level: "{{ tts_volume_level }}"
+                      tts_service: "tts.{{ tts_service }}"
+                      tts_speak_entity: "{{ tts_speak_entity }}"
+                      message: "A {{ label }} was detected on the {{ camera_name }} camera."
   # Android tv notification
   - choose:
-    - conditions: "{{ android_tv_services|length > 0 }}"
-      sequence:
-        - service: python_script.send_android_tv_notifications
-          data:
-            services: "{{ android_tv_services }}"
-            title: Security Alert
-            message: "A {{ label }} was detected on the {{ camera_name }} camera."
-            image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+      - conditions: "{{ android_tv_services|length > 0 }}"
+        sequence:
+          - service: python_script.send_android_tv_notifications
+            data:
+              services: "{{ android_tv_services }}"
+              title: Security Alert
+              message: "A {{ label }} was detected on the {{ camera_name }} camera."
+              image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
   # Don't send mobile notifications if no group or device is specified
   - choose:
-    - conditions: "{{ group_target or notify_device }}" 
-      sequence:
-        - choose: # mobile app
-          - conditions: "{{ not group_target }}"
-            sequence:
-              - device_id: !input notify_device
-                domain: mobile_app
-                type: notify
-                message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-                data: 
-                  tag: '{{ id }}'
-                  group: 'frigate-notification-{{ camera }}'
-                  image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-                  attachment: # iOS
-                    url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
-          default:
-            - service: "notify.{{ group_target }}"
-              data:
-                message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+      - conditions: "{{ group_target or notify_device }}"
+        sequence:
+          - choose: # mobile app
+              - conditions: "{{ not group_target }}"
+                sequence:
+                  - device_id: !input notify_device
+                    domain: mobile_app
+                    type: notify
+                    message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                    data:
+                      tag: "{{ id }}"
+                      group: "frigate-notification-{{ camera }}"
+                      image: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
+                      attachment: # iOS
+                        url: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg"
+            default:
+              - service: "notify.{{ group_target }}"
                 data:
-                  tag: '{{ id }}'
-                  group: 'frigate-notification-{{ camera }}'
-                  image: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-                  attachment: # iOS
-                    url: '{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg'
+                  message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                  data:
+                    tag: "{{ id }}"
+                    group: "frigate-notification-{{ camera }}"
+                    image: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
+                    attachment: # iOS
+                      url: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg"
   # Signal Notification pre event
   - choose:
-    - conditions: "{{ not not signal_service }}"
-      sequence:
-        - service: "notify.{{ signal_service }}"
-          data:
-            message: '1. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.'
+      - conditions: "{{ not not signal_service }}"
+        sequence:
+          - service: "notify.{{ signal_service }}"
             data:
-              urls:
-                - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+              message: "1. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}."
+              data:
+                urls:
+                  - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
   # update sent notification after event has concluded
   - repeat:
       sequence:
         - wait_for_trigger:
-          - platform: mqtt
-            topic: frigate/events
-            payload: "{{ id }}"
-            value_template: "{{ value_json['after']['id'] }}"
+            - platform: mqtt
+              topic: frigate/events
+              payload: "{{ id }}"
+              value_template: "{{ value_json['after']['id'] }}"
           timeout:
             minutes: 2
           continue_on_timeout: false
@@ -295,99 +295,99 @@ action:
           value_template: "{{ wait.trigger.payload_json['type'] == 'end' or wait.trigger.payload_json['after']['stationary'] == true }}"
         # Send web UI notification
         - choose:
-          - conditions: "{{ integrated_notification }}"  # web UI
-            sequence:
-              - service: persistent_notification.create
-                data:
-                  title: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-                  message: >
-                    <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
-                    ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
-                  notification_id: 'frigate_{{ id }}'
+            - conditions: "{{ integrated_notification }}" # web UI
+              sequence:
+                - service: persistent_notification.create
+                  data:
+                    title: "A {{ label }} was detected on the {{ camera_name }} camera."
+                    message: >
+                      <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
+                      ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
+                    notification_id: "frigate_{{ id }}"
         # Send mobile notification
         # Don't send mobile notifications if no group or device is specified
         - choose:
-          - conditions: "{{ group_target or notify_device }}"
-            sequence:
-              - choose:
-                - conditions: "{{ not group_target }}"
-                  sequence:
-                    - device_id: !input notify_device
-                      domain: mobile_app
-                      type: notify
-                      message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
-                      data: 
-                        tag: '{{ id }}'
-                        group: 'frigate-notification-{{ camera }}'
-                        url: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # iOS
-                        clickAction: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # Android
-                        image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-                        sound: none
-                        attachment: # iOS
-                          url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
-                          # lazy: true
-                        actions:
-                          - action: URI
-                            title: View Clip
-                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
-                          - action: URI
-                            title: View Snapshot
-                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
-                          - action: 'silence-{{ camera }}'
-                            title: Silence Notifications
-                            destructive: true
-                default:
-                  - service: "notify.{{ group_target }}"
-                    data:
-                      message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
+            - conditions: "{{ group_target or notify_device }}"
+              sequence:
+                - choose:
+                    - conditions: "{{ not group_target }}"
+                      sequence:
+                        - device_id: !input notify_device
+                          domain: mobile_app
+                          type: notify
+                          message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                          data:
+                            tag: "{{ id }}"
+                            group: "frigate-notification-{{ camera }}"
+                            url: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # iOS
+                            clickAction: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # Android
+                            image: "/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
+                            sound: none
+                            attachment: # iOS
+                              url: "/api/frigate/notifications/{{id}}/thumbnail.jpg"
+                              # lazy: true
+                            actions:
+                              - action: URI
+                                title: View Clip
+                                uri: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
+                              - action: URI
+                                title: View Snapshot
+                                uri: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+                              - action: "silence-{{ camera }}"
+                                title: Silence Notifications
+                                destructive: true
+                  default:
+                    - service: "notify.{{ group_target }}"
                       data:
-                        tag: '{{ id }}'
-                        group: 'frigate-notification-{{ camera }}'
-                        url: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # iOS
-                        clickAction: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4' # Android
-                        image: '/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android' # Android
-                        sound: none
-                        attachment: # iOS
-                          url: '/api/frigate/notifications/{{id}}/thumbnail.jpg'
-                          # lazy: true
-                        actions:
-                          - action: URI
-                            title: View Clip
-                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4'
-                          - action: URI
-                            title: View Snapshot
-                            uri: '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
-                          - action: 'silence-{{ camera }}'
-                            title: Silence Notifications
-                            destructive: true
+                        message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                        data:
+                          tag: "{{ id }}"
+                          group: "frigate-notification-{{ camera }}"
+                          url: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # iOS
+                          clickAction: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # Android
+                          image: "/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
+                          sound: none
+                          attachment: # iOS
+                            url: "/api/frigate/notifications/{{id}}/thumbnail.jpg"
+                            # lazy: true
+                          actions:
+                            - action: URI
+                              title: View Clip
+                              uri: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
+                            - action: URI
+                              title: View Snapshot
+                              uri: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+                            - action: "silence-{{ camera }}"
+                              title: Silence Notifications
+                              destructive: true
         # Signal Notification
         - choose:
-          - conditions: "{{ not not signal_service }}"
-            sequence:
-              - service: "notify.{{ signal_service }}"
-                data:
-                  message: >
-                    2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
-                    {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
+            - conditions: "{{ not not signal_service }}"
+              sequence:
+                - service: "notify.{{ signal_service }}"
                   data:
-                    urls:
-                      - '{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg'
+                    message: >
+                      2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
+                      {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
+                    data:
+                      urls:
+                        - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
         # Android tv notification
         - choose:
-          - conditions: "{{ android_tv_services|length > 0 }}"
-            sequence:
-              - service: python_script.send_android_tv_notifications
-                data:
-                  services: "{{ android_tv_services }}"
-                  title: Security Alert
-                  message: "A {{ label }} was detected on the {{ camera_name }} camera."
-                  image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+            - conditions: "{{ android_tv_services|length > 0 }}"
+              sequence:
+                - service: python_script.send_android_tv_notifications
+                  data:
+                    services: "{{ android_tv_services }}"
+                    title: Security Alert
+                    message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                    image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
       until: "{{ wait.trigger.payload_json['type'] == 'end' or wait.trigger.payload_json['after']['stationary'] == true }}"
   - wait_for_trigger:
-    - platform: event
-      event_type: mobile_app_notification_action
-      event_data:
-        action: 'silence-{{ camera }}'
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: "silence-{{ camera }}"
     timeout:
       seconds: !input cooldown
     continue_on_timeout: false
