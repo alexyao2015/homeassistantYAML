@@ -20,7 +20,6 @@ def main():
             return
         service_data["media_player_entity_id"] = media_player
         service_data["cache"] = False
-        logger.error(f"testing {service_data}")
         hass.services.call("tts", tts_service, service_data, target={ "entity_id": tts_speak_entity })
     else:
         service_data["entity_id"] = media_player
