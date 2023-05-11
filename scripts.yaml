@@ -6,6 +6,7 @@ play_tts_at_volume:
     media_player: "{{ media_player }}"
     volume_level: "{{ volume_level }}"
     tts_service: "{{ tts_service }}"
+    tts_speak_entity: "{{ tts_speak_entity }}"
     message: "{{ message }}"
   sequence:
     - choose:
