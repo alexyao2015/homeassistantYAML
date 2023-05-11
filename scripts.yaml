@@ -31,10 +31,12 @@ play_tts_at_volume:
             target:
               entity_id: "{{ media_player }}"
           # start message
-          - service: "{{ tts_service }}"
+          - service: python_script.play_tts
             data:
-              entity_id: "{{ media_player }}"
-              message: "{{ message }}"
+              media_player: '{{ media_player }}'
+              tts_service: '{{ tts_service }}'
+              tts_speak_entity: "{{ tts_speak_entity }}"
+              message: '{{ message }}'
           # Wait for idle with timeout
           - wait_template: "{{ states(media_player) == 'idle' }}"
             timeout: "00:00:10"

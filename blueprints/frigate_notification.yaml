@@ -126,6 +126,10 @@ blueprint:
       name: (Optional) TTS Service
       description: The service name to use for sending a notification using TTS.
       default: ""
+    tts_speak_entity:
+      name: (Optional) TTS Speak Entity
+      description: Required if using speak as the tts_service. Specify the tts entity to use.
+      default: ""
     tts_volume_level:
       name: (Optional) TTS Volume Level
       description: The volume to play TTS at.
@@ -179,6 +183,7 @@ variables:
   enable_time_condition: !input enable_time_condition
 
   tts_service: !input tts_service
+  tts_speak_entity: !input tts_speak_entity
   input_media_player_tts: !input media_player_tts
   media_player_tts: "{{ input_media_player_tts | list }}"
   tts_volume_level: !input tts_volume_level
@@ -225,6 +230,7 @@ action:
                     media_player: "{{ media_player_tts[repeat.index - 1] }}"
                     volume_level: "{{ tts_volume_level }}"
                     tts_service: "tts.{{ tts_service }}"
+                    tts_speak_entity: "{{ tts_speak_entity }}"
                     message: 'A {{ label }} was detected on the {{ camera_name }} camera.'
   # Android tv notification
   - choose:
