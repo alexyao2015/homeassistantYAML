@@ -31,6 +31,17 @@ play_tts_at_volume:
                 volume_level: "{{ volume_level }}"
               target:
                 entity_id: "{{ media_player }}"
+            # Pre alert sound
+            - service: media_player.play_media
+              data:
+                media_content_id: https://hassio.familynetworkcentral.com/local/audio/alert.wav
+                media_content_type: "music"
+              target:
+                entity_id: "{{ media_player }}"
+            - delay: 1
+            # Wait for idle with timeout
+            - wait_template: "{{ states(media_player) == 'idle' }}"
+              timeout: "00:00:10"
             # start message
             - service: python_script.play_tts
               data:
@@ -38,6 +49,7 @@ play_tts_at_volume:
                 tts_service: "{{ tts_service }}"
                 tts_speak_entity: "{{ tts_speak_entity }}"
                 message: "{{ message }}"
+            - delay: 1
             # Wait for idle with timeout
             - wait_template: "{{ states(media_player) == 'idle' }}"
               timeout: "00:00:10"
