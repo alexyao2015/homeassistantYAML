@@ -72,7 +72,7 @@ action:
         - service: script.turn_on
           data:
             variables:
-              message: A leak was detected on the "{{ trigger_entity_name }}" sensor
+              message: "A leak was detected on the {{ trigger_entity_name }} sensor"
           target:
             entity_id: script.notify_everywhere
         - delay: "{{ announcement_delay }}"
