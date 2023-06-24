@@ -5,21 +5,21 @@ blueprint:
   domain: automation
   source_url: https://github.com/alexyao2015/homeassistantYAML/blob/master/blueprints/leak_annoucement.yaml
   input:
-    leak_sensor:
+    input_leak_sensor:
       name: Leak Sensor
       description: The leak sensor to watch for leaks.
       selector:
         entity:
           domain: binary_sensor
           device_class: moisture
-    water_shutoff:
+    input_water_shutoff:
       name: (Optional) Water Shutoff Valve
       description: The water shutoff valve to turn off if a leak has been detected
       default: ""
       selector:
         entity:
           domain: switch
-    announcement_count:
+    input_announcement_count:
       name: Announcement Count
       description: Number of times to announce a leak has occurred
       default: "1"
@@ -28,7 +28,7 @@ blueprint:
           min: 1
           max: 1000
           mode: box
-    announcement_delay:
+    input_announcement_delay:
       name: Announcement Delay
       description: Delay between each announcement
       default: "00:01:00"
@@ -37,18 +37,20 @@ blueprint:
 mode: single
 max_exceeded: silent
 
-variables:
-  leak_sensor: !input leak_sensor
-  water_shutoff: !input water_shutoff
-  announcement_count: !input announcement_count
-  announcement_delay: !input announcement_delay
-
-  trigger_entity_id: "{{ trigger.entity_id }}"
-  trigger_entity_name: "{{ trigger.to_state.attributes.friendly_name }}"
-
+trigger_variables:
+  leak_sensor: !input input_leak_sensor
 trigger:
   - platform: template
     value_template: "{{ states(leak_sensor) == 'on' }}"
+
+variables:
+  water_shutoff: !input input_water_shutoff
+  announcement_count_str: !input input_announcement_count
+  announcement_delay: !input input_announcement_delay
+
+  announcement_count: "{{ announcement_count_str | int }}"
+  trigger_entity_id: "{{ trigger.entity_id }}"
+  trigger_entity_name: "{{ trigger.to_state.attributes.friendly_name }}"
 
 action:
   - choose:
@@ -63,7 +65,7 @@ action:
         - condition: or
           conditions:
             - condition: template
-              value_template: "{{ repeat.index > announcement_count }}"
+              value_template: "{{ repeat.index >= announcement_count }}"
             - condition: template
               value_template: '{{ states(trigger_entity_id) == "off" }}'
       sequence:
@@ -73,5 +75,4 @@ action:
               message: A leak was detected on the "{{ trigger_entity_name }}" sensor
           target:
             entity_id: script.notify_everywhere
-          enabled: false
         - delay: "{{ announcement_delay }}"
