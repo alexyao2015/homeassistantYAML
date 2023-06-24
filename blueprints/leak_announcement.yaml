@@ -34,8 +34,7 @@ blueprint:
       default: "00:01:00"
       selector:
         duration:
-mode: single
-max_exceeded: silent
+mode: restart
 
 trigger_variables:
   leak_sensor: !input input_leak_sensor
