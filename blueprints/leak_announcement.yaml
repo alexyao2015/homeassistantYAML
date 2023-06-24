@@ -22,7 +22,7 @@ blueprint:
     input_announcement_count:
       name: Announcement Count
       description: Number of times to announce a leak has occurred
-      default: "1"
+      default: "100"
       selector:
         number:
           min: 1
