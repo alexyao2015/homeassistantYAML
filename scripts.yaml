@@ -1,7 +1,7 @@
 # requires full entity ids
 play_tts_at_volume:
   alias: Play TTS at Volume
-  mode: parallel
+  mode: queued
   variables:
     media_player: "{{ media_player }}"
     volume_level: "{{ volume_level }}"
