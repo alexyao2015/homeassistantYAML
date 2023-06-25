@@ -164,7 +164,6 @@ variables:
   camera: "{{ trigger.payload_json['after']['camera'] }}"
   camera_name: "{{ camera | replace('_', ' ') | title }}"
   object: "{{ trigger.payload_json['after']['label'] }}"
-  stationary: "{{ trigger.payload_json['after']['stationary'] }}"
   label: "{{ object | title }}"
   entered_zones: "{{ trigger.payload_json['after']['entered_zones'] }}"
   detection_score: "{{ trigger.payload_json['after']['top_score'] }}"
@@ -191,8 +190,7 @@ variables:
   android_tv_services_input: !input android_tv_services
   android_tv_services: "{{ android_tv_services_input | list }}"
 condition:
-  - "{{ type != 'end' }}"
-  - "{{ not stationary }}"
+  - "{{ type == 'new' }}"
   - "{{ not zone_only or entered_zones|length > 0 }}"
   - "{{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}"
   - "{{ not labels|length or object in labels }}"
