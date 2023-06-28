@@ -1,13 +1,46 @@
 # requires full entity ids
 play_tts_at_volume:
   alias: Play TTS at Volume
-  mode: queued
-  variables:
-    media_player: "{{ media_player }}"
-    volume_level: "{{ volume_level }}"
-    tts_service: "{{ tts_service }}"
-    tts_speak_entity: "{{ tts_speak_entity }}"
-    message: "{{ message }}"
+  mode: parallel
+  fields:
+    message:
+      name: "Message"
+      description: "Message to play using TTS"
+      required: true
+      selector:
+        text:
+    media_player:
+      name: "Media Player"
+      description: "The media player to play TTS on."
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    volume_level:
+      name: "Volume Level"
+      description: "The volume to play TTS at."
+      required: true
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.05
+    tts_service:
+      name: "TTS Service"
+      description: "Full name of the TTS service to use for TTS."
+      example: "tts.speak"
+      required: true
+      selector:
+        text:
+    tts_speak_entity:
+      name: "TTS Speak Entity"
+      description: "Required if using tts.speak, specify the tts entity to use."
+      example: "tts.piper"
+      required: false
+      selector:
+        entity:
+          domain: tts
   sequence:
     - choose:
         - conditions: "{{ not not media_player and not not volume_level and not not tts_service and not not message }}"
