@@ -93,7 +93,9 @@ blueprint:
 
     input_tts_service:
       name: (Optional) TTS Service
-      description: The service name to use for sending a notification using TTS. One of https://github.com/nimroddolev/chime_tts/wiki/chime_tts.say#tts_platform
+      description: >
+        The service name to use for sending a notification using TTS.
+        One of https://github.com/nimroddolev/chime_tts/wiki/chime_tts.say#tts_platform
       default: ""
     input_tts_volume_level:
       name: (Optional) TTS Volume Level
@@ -116,13 +118,10 @@ blueprint:
 
     input_android_tv_services:
       name: (Optional) Android TV Services
-      description: A list (-) of TV Notifications for Android TV service names.
+      description: A list (-) of TV Notifications for Android TV service names. (e.g. notify.my_android_tv)
       default: []
-      selector:
-        entity:
-          filter:
-            domain: "notify"
-          multiple: true
+      selector: 
+        object: 
 
 mode: parallel
 max: 10
