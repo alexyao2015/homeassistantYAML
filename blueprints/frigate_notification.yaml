@@ -20,8 +20,7 @@ blueprint:
         - person
         - car
         ```
-      - You can disable notifications if a presence entity or group is "home".
-      - You can configure a cooldown for the camera to reduce the number of notifications when back-to-back events occur.
+      - You can disable notifications if a presence entity or group is "home".\
       - You can silence future notifications for a defined amount of time through actionable notifications. This is helpful in situations where you know you will be triggering detections for an extended period of time, like when the kids are playing outside.
     [1]: https://companion.home-assistant.io/docs/notifications/notifications-basic#sending-notifications-to-multiple-devices
     [2]: https://blakeblackshear.github.io/frigate/configuration/cameras#zones
@@ -29,108 +28,78 @@ blueprint:
   domain: automation
   source_url: https://github.com/alexyao2015/homeassistantYAML/blob/master/blueprints/frigate_notification.yaml
   input:
-    camera:
+    input_camera:
       name: Frigate Camera
       description: The name of the camera as defined in your frigate configuration.
-    notify_device:
-      name: (Optional) Device
-      description: The device must run the official Home Assistant app to receive notifications.
-      default: false
       selector:
-        device:
-          integration: mobile_app
-    notify_group:
-      name: (Optional) Notification Group
-      description: The name of the notification group to call.
-      default: ""
-    base_url:
+        entity:
+          filter:
+            domain: camera
+    input_base_url:
       name: (Optional) Base URL
       description: >
         The external url for your Home Assistant instance. This will default to a relative
         URL and will open the clips in the app instead of the browser, which may cause issues
         on some devices.
       default: ""
-    zone_filter:
-      name: (Optional) Zone Filter
-      description: Only notify if object has entered a defined zone.
-      default: false
-      selector:
-        boolean:
-    zones:
+    input_zones:
       name: (Optional) Trigger Zones
-      description: A list (-) of zones you wish to recieve notifications for.
+      description: If specificed, only notify if object has entered a defined zone. Provide as a list (-) of zones you wish to recieve notifications for.
       default: []
       selector:
         object:
-    labels:
+    input_trigger_objects:
       name: (Optional) Trigger Objects
       description: A list (-) of objects you wish to recieve notifications for.
       default: []
       selector:
         object:
-    presence_filter:
-      name: (Optional) Presence Filter
+    input_presence_entity:
+      name: (Optional) Presence Entity
       description: Only notify if selected presence entity is not "home".
       default: ""
       selector:
         entity:
-    cooldown:
-      name: (Optional) Cooldown
-      description: Delay before sending another notification for this camera after the last event.
-      default: 30
-      selector:
-        number:
-          max: 300
-          min: 0
-          unit_of_measurement: seconds
-    silence_timer:
-      name: (Optional) Silence Notifications
-      description: >
-        How long to silence notifications for this camera when requested as part of the
-        actionable notification.
-      default: 30
-      selector:
-        number:
-          max: 300
-          min: 0
-          unit_of_measurement: minutes
-    integrated_notification:
+
+    input_integrated_notification:
       name: (Optional) Integrated Web UI Notifications
       description: Show notification in Web UI (must have automation to clear old notifications installed)
       default: false
       selector:
         boolean:
-    signal_service:
+    input_signal_service:
       name: (Optional) Signal Service
       description: The service to use for sending a notification using Signal Messenger.
       default: ""
-    enable_time_condition:
+
+    input_enable_time_condition:
       name: (Optional) Enable Time Condition
       description: Enable the time condition to only run the automation when the time is between the start and end times.
       default: false
       selector:
         boolean:
-    time_condition_start:
+    input_time_condition_start:
       name: (Optional) Time Condition Start
       description: The start time for the time condition.
       default: "8:00:00"
       selector:
         time:
-    time_condition_end:
+    input_time_condition_end:
       name: (Optional) Time Condition End
       description: The end time for the time condition.
       default: "22:00:00"
       selector:
         time:
-    tts_service:
+
+    input_tts_service:
       name: (Optional) TTS Service
       description: The service name to use for sending a notification using TTS.
       default: ""
-    tts_speak_entity:
+    input_tts_speak_entity:
       name: (Optional) TTS Speak Entity
       description: Required if using speak as the tts_service. Specify the tts entity to use.
       default: ""
-    tts_volume_level:
+    input_tts_volume_level:
       name: (Optional) TTS Volume Level
       description: The volume to play TTS at.
       default: 1
@@ -139,145 +108,187 @@ blueprint:
           min: 0
           max: 1
           step: 0.05
-    media_player_tts:
+    input_media_player_tts:
       name: (Optional) Media Players to use for TTS
       description: A list (-) of media players you wish to use for TTS, including media_player.
       default: []
       selector:
         object:
-    android_tv_services:
+
+    input_android_tv_services:
       name: (Optional) Android TV Services
       description: A list (-) of TV Notifications for Android TV service names, excluding notify.
       default: []
       selector:
         object:
-mode: single
-max_exceeded: silent
 
+mode: parallel
+max: 10
+
+trigger_variables:
+  camera: !input input_camera
 trigger:
   platform: mqtt
   topic: frigate/events
-  payload: !input camera
-  value_template: "{{ value_json['after']['camera'] }}"
+  payload: |
+    {{ camera ~ "`;`new"}}
+  value_template: |
+    {{ value_json['after']['camera'] ~ "`;`" ~ value_json['type'] }}
+
 variables:
+  base_url: !input input_base_url
+  input_zones: !input input_zones
+  input_trigger_objects: !input input_trigger_objects
+  presence_entity: !input input_presence_entity
+  integrated_notification: !input input_integrated_notification
+  signal_service: !input input_signal_service
+  enable_time_condition: !input input_enable_time_condition
+
+  tts_service: !input input_tts_service
+  tts_speak_entity: !input input_tts_speak_entity
+  tts_volume_level: !input input_tts_volume_level
+  media_player_tts: !input input_media_player_tts
+
+  android_tv_services_input: !input input_android_tv_services
+
+  camera_name: "{{ trigger.payload_json['after']['camera'] | replace('_', ' ') | title }}"
   id: "{{ trigger.payload_json['after']['id'] }}"
-  camera: "{{ trigger.payload_json['after']['camera'] }}"
-  camera_name: "{{ camera | replace('_', ' ') | title }}"
-  object: "{{ trigger.payload_json['after']['label'] }}"
-  label: "{{ object | title }}"
-  entered_zones: "{{ trigger.payload_json['after']['entered_zones'] }}"
-  detection_score: "{{ trigger.payload_json['after']['top_score'] }}"
-  type: "{{ trigger.payload_json['type'] }}"
-  base_url: !input base_url
-  notify_device: !input notify_device
-  group_target: !input notify_group
-  zone_only: !input zone_filter
-  input_zones: !input zones
+
   zones: "{{ input_zones | list }}"
-  input_labels: !input labels
-  labels: "{{ input_labels | list }}"
-  presence_entity: !input presence_filter
-  integrated_notification: !input integrated_notification
-  signal_service: !input signal_service
-  enable_time_condition: !input enable_time_condition
+  trigger_objects: "{{ input_trigger_objects | list }}"
 
-  tts_service: !input tts_service
-  tts_speak_entity: !input tts_speak_entity
-  input_media_player_tts: !input media_player_tts
-  media_player_tts: "{{ input_media_player_tts | list }}"
-  tts_volume_level: !input tts_volume_level
-
-  android_tv_services_input: !input android_tv_services
-  android_tv_services: "{{ android_tv_services_input | list }}"
 condition:
-  - "{{ type == 'new' }}"
-  - "{{ not zone_only or entered_zones|length > 0 }}"
-  - "{{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}"
-  - "{{ not labels|length or object in labels }}"
+  # - "{{ trigger.payload_json['type'] == 'new' }}"
   - "{{ not presence_entity or not is_state(presence_entity, 'home') }}"
   - condition: or
     conditions:
       - "{{ not enable_time_condition }}"
       - condition: time
-        before: !input time_condition_end
-        after: !input time_condition_start
+        before: !input input_time_condition_end
+        after: !input input_time_condition_start
 action:
   # initially send notification immediately after event is triggered
-  # Web UI notifications are sent in addition to mobile notifications
-  - choose:
-      - conditions: "{{ integrated_notification }}" # web UI
-        sequence:
-          - service: persistent_notification.create
-            data:
-              title: "A {{ label }} was detected on the {{ camera_name }} camera."
-              message: "![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)"
-              notification_id: "frigate_{{ id }}"
-          - service: python_script.clear_notifications
-  - choose:
-      - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}" # TTS
-        sequence:
-          - alias: "Turn on every media_player"
-            repeat:
-              count: "{{ media_player_tts|length }}"
+  - repeat:
+      sequence:
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ repeat.index == 1 }}"
               sequence:
-                - service: script.turn_on
-                  target:
-                    entity_id: "script.play_tts_at_volume"
-                  data:
-                    variables:
-                      media_player: "{{ media_player_tts[repeat.index - 1] }}"
-                      volume_level: "{{ tts_volume_level }}"
-                      tts_service: "tts.{{ tts_service }}"
-                      tts_speak_entity: "{{ tts_speak_entity }}"
-                      message: "A {{ label }} was detected on the {{ camera_name }} camera."
-  # Android tv notification
-  - choose:
-      - conditions: "{{ android_tv_services|length > 0 }}"
-        sequence:
-          - service: python_script.send_android_tv_notifications
-            data:
-              services: "{{ android_tv_services }}"
-              title: Security Alert
-              message: "A {{ label }} was detected on the {{ camera_name }} camera."
-              image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-  # Don't send mobile notifications if no group or device is specified
-  - choose:
-      - conditions: "{{ group_target or notify_device }}"
-        sequence:
-          - choose: # mobile app
-              - conditions: "{{ not group_target }}"
-                sequence:
-                  - device_id: !input notify_device
-                    domain: mobile_app
-                    type: notify
-                    message: "A {{ label }} was detected on the {{ camera_name }} camera."
-                    data:
-                      tag: "{{ id }}"
-                      group: "frigate-notification-{{ camera }}"
-                      image: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
-                      attachment: # iOS
-                        url: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg"
-            default:
-              - service: "notify.{{ group_target }}"
-                data:
-                  message: "A {{ label }} was detected on the {{ camera_name }} camera."
-                  data:
-                    tag: "{{ id }}"
-                    group: "frigate-notification-{{ camera }}"
-                    image: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
-                    attachment: # iOS
-                      url: "{{base_url}}/api/frigate/notifications/{{id}}/thumbnail.jpg"
-  # Signal Notification pre event
-  - choose:
-      - conditions: "{{ not not signal_service }}"
-        sequence:
-          - service: "notify.{{ signal_service }}"
-            data:
-              message: "1. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}."
-              data:
-                urls:
-                  - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-  # update sent notification after event has concluded
+                # generate variables for the if condition
+                - variables:
+                    entered_zones: "{{ trigger.payload_json['after']['entered_zones'] }}"
+                    object: "{{ trigger.payload_json['after']['label'] }}"
+                # if the initial trigger wasn't in zone, wait for another trigger
+                - condition: or
+                  conditions:
+                    - condition: template
+                      value_template: "{{ not (not zones|length or zones|select('in', entered_zones)|list|length > 0) }}"
+                    - condition: template
+                      value_template: "{{ not (not trigger_objects|length or object in trigger_objects) }}"
+                - wait_for_trigger:
+                    - platform: mqtt
+                      topic: frigate/events
+                      payload: "{{ id }}"
+                      value_template: "{{ value_json['after']['id'] }}"
+                  timeout:
+                    minutes: 2
+                  continue_on_timeout: false
+          default:
+            - wait_for_trigger:
+                - platform: mqtt
+                  topic: frigate/events
+                  payload: "{{ id }}"
+                  value_template: "{{ value_json['after']['id'] }}"
+              timeout:
+                minutes: 2
+              continue_on_timeout: false
+        - variables:
+            repeat_trigger: "{{ wait.trigger if wait is defined else trigger }}"
+            entered_zones: "{{ repeat_trigger.payload_json['after']['entered_zones'] }}"
+            object: "{{ repeat_trigger.payload_json['after']['label'] }}"
+            label: "{{ object | title }}"
+            detection_score: "{{ repeat_trigger.payload_json['after']['top_score'] }}"
+        - condition: template
+          value_template: |
+            {{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}
+        - condition: template
+          value_template: |
+            {{ not trigger_objects|length or object in trigger_objects }}
+        - parallel:
+            # web UI
+            - choose:
+                - conditions: "{{ integrated_notification }}"
+                  sequence:
+                    - service: persistent_notification.create
+                      data:
+                        title: "A {{ label }} was detected on the {{ camera_name }} camera."
+                        message: "![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)"
+                        notification_id: "frigate_{{ id }}"
+                    - service: persistent_notification_prune.dismiss_old_notifications
+            # TTS
+            - choose:
+                - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}"
+                  sequence:
+                    - alias: "Turn on every media_player"
+                      repeat:
+                        count: "{{ media_player_tts|length }}"
+                        sequence:
+                          - service: script.turn_on
+                            target:
+                              entity_id: "script.play_tts_at_volume"
+                            data:
+                              variables:
+                                media_player: "{{ media_player_tts[repeat.index - 1] }}"
+                                volume_level: "{{ tts_volume_level }}"
+                                tts_service: "tts.{{ tts_service }}"
+                                tts_speak_entity: "{{ tts_speak_entity }}"
+                                message: "A {{ label }} was detected on the {{ camera_name }} camera."
+            # Android tv notification
+            - choose:
+                - conditions: "{{ android_tv_services|length > 0 }}"
+                  sequence:
+                    - service: python_script.send_android_tv_notifications
+                      data:
+                        services: "{{ android_tv_services }}"
+                        title: Security Alert
+                        message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                        image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+            # Signal Notification pre event
+            - choose:
+                - conditions: "{{ not not signal_service }}"
+                  sequence:
+                    - service: "notify.{{ signal_service }}"
+                      data:
+                        message: "1. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}."
+                        data:
+                          urls:
+                            - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+        - condition: template
+          value_template: "{{ repeat_trigger.payload_json['type'] == 'end' }}"
+        - stop: "Event ended on first trigger"
+          error: true
+      until:
+        # stop when the event ends or if the event triggered a notification
+        - or:
+            - condition: template
+              value_template: |
+                  {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+                  {{ repeat_trigger.payload_json['type'] == 'end' }}
+            # have to repeat conditions because script variables except for wait and trigger
+            # can't be accessed in the until condition
+            - and:
+              - condition: template
+                value_template: |
+                  {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+                  {% set entered_zones = repeat_trigger.payload_json['after']['entered_zones'] %}
+                  {{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}
+              - condition: template
+                value_template: |
+                  {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+                  {% set object = repeat_trigger.payload_json['after']['label'] %}
+                  {{ not trigger_objects|length or object in trigger_objects }}
+
   - repeat:
       sequence:
         - wait_for_trigger:
@@ -288,106 +299,64 @@ action:
           timeout:
             minutes: 2
           continue_on_timeout: false
-        # only send on event end or if the object stopped moving
+        - variables:
+            entered_zones: "{{ wait.trigger.payload_json['after']['entered_zones'] }}"
+            object: "{{ wait.trigger.payload_json['after']['label'] }}"
+            label: "{{ object | title }}"
+            detection_score: "{{ wait.trigger.payload_json['after']['top_score'] }}"
         - condition: template
-          value_template: "{{ wait.trigger.payload_json['type'] == 'end' or wait.trigger.payload_json['after']['stationary'] == true }}"
-        # Send web UI notification
-        - choose:
-            - conditions: "{{ integrated_notification }}" # web UI
-              sequence:
-                - service: persistent_notification.create
-                  data:
-                    title: "A {{ label }} was detected on the {{ camera_name }} camera."
-                    message: >
-                      <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
-                      ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
-                    notification_id: "frigate_{{ id }}"
-        # Send mobile notification
-        # Don't send mobile notifications if no group or device is specified
-        - choose:
-            - conditions: "{{ group_target or notify_device }}"
-              sequence:
-                - choose:
-                    - conditions: "{{ not group_target }}"
-                      sequence:
-                        - device_id: !input notify_device
-                          domain: mobile_app
-                          type: notify
-                          message: "A {{ label }} was detected on the {{ camera_name }} camera."
-                          data:
-                            tag: "{{ id }}"
-                            group: "frigate-notification-{{ camera }}"
-                            url: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # iOS
-                            clickAction: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # Android
-                            image: "/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
-                            sound: none
-                            attachment: # iOS
-                              url: "/api/frigate/notifications/{{id}}/thumbnail.jpg"
-                              # lazy: true
-                            actions:
-                              - action: URI
-                                title: View Clip
-                                uri: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
-                              - action: URI
-                                title: View Snapshot
-                                uri: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-                              - action: "silence-{{ camera }}"
-                                title: Silence Notifications
-                                destructive: true
-                  default:
-                    - service: "notify.{{ group_target }}"
+          value_template: "{{ wait.trigger.payload_json['type'] == 'end' }}"
+        - condition: template
+          value_template: "{{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}"
+        - condition: template
+          value_template: "{{ not trigger_objects|length or object in trigger_objects }}"
+        - parallel:
+            # persistent notification
+            # web UI
+            - choose:
+                - conditions: "{{ integrated_notification }}"
+                  sequence:
+                    - service: persistent_notification.create
                       data:
-                        message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                        title: "A {{ label }} was detected on the {{ camera_name }} camera."
+                        message: >
+                          <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
+                          ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
+                        notification_id: "frigate_{{ id }}"
+                    - service: persistent_notification_prune.dismiss_old_notifications
+            # Send web UI notification
+            - choose:
+                - conditions: "{{ integrated_notification }}" # web UI
+                  sequence:
+                    - service: persistent_notification.create
+                      data:
+                        title: "A {{ label }} was detected on the {{ camera_name }} camera."
+                        message: >
+                          <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
+                          ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
+                        notification_id: "frigate_{{ id }}"
+            # Signal Notification
+            - choose:
+                - conditions: "{{ not not signal_service }}"
+                  sequence:
+                    - service: "notify.{{ signal_service }}"
+                      data:
+                        message: >
+                          2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
+                          {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
                         data:
-                          tag: "{{ id }}"
-                          group: "frigate-notification-{{ camera }}"
-                          url: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # iOS
-                          clickAction: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" # Android
-                          image: "/api/frigate/notifications/{{id}}/thumbnail.jpg?format=android" # Android
-                          sound: none
-                          attachment: # iOS
-                            url: "/api/frigate/notifications/{{id}}/thumbnail.jpg"
-                            # lazy: true
-                          actions:
-                            - action: URI
-                              title: View Clip
-                              uri: "{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4"
-                            - action: URI
-                              title: View Snapshot
-                              uri: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-                            - action: "silence-{{ camera }}"
-                              title: Silence Notifications
-                              destructive: true
-        # Signal Notification
-        - choose:
-            - conditions: "{{ not not signal_service }}"
-              sequence:
-                - service: "notify.{{ signal_service }}"
-                  data:
-                    message: >
-                      2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
-                      {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
-                    data:
-                      urls:
-                        - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-        # Android tv notification
-        - choose:
-            - conditions: "{{ android_tv_services|length > 0 }}"
-              sequence:
-                - service: python_script.send_android_tv_notifications
-                  data:
-                    services: "{{ android_tv_services }}"
-                    title: Security Alert
-                    message: "A {{ label }} was detected on the {{ camera_name }} camera."
-                    image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-      until: "{{ wait.trigger.payload_json['type'] == 'end' or wait.trigger.payload_json['after']['stationary'] == true }}"
-  - wait_for_trigger:
-      - platform: event
-        event_type: mobile_app_notification_action
-        event_data:
-          action: "silence-{{ camera }}"
-    timeout:
-      seconds: !input cooldown
-    continue_on_timeout: false
-  - delay:
-      minutes: !input silence_timer
+                          urls:
+                            - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+            # Android tv notification
+            - choose:
+                - conditions: "{{ android_tv_services|length > 0 }}"
+                  sequence:
+                    - service: python_script.send_android_tv_notifications
+                      data:
+                        services: "{{ android_tv_services }}"
+                        title: Security Alert
+                        message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                        image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+      until:
+        - condition: template
+          value_template: "{{ wait.trigger.payload_json['type'] == 'end' }}"

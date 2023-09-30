@@ -10,15 +10,17 @@ blueprint:
       description: The leak sensor to watch for leaks.
       selector:
         entity:
-          domain: binary_sensor
-          device_class: moisture
+          filter:
+            domain: binary_sensor
+            device_class: moisture
     input_water_shutoff:
       name: (Optional) Water Shutoff Valve
       description: The water shutoff valve to turn off if a leak has been detected
       default: ""
       selector:
         entity:
-          domain: switch
+          filter:
+            domain: switch
     input_announcement_count:
       name: Announcement Count
       description: Number of times to announce a leak has occurred

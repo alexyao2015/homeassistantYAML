@@ -1,28 +1,30 @@
 blueprint:
-  name: Leak Annoucement
+  name: Leak Low Battery Annoucement
   description: |
-    Announce when a leak occurs and shutoff water
+    Announce when a leak sensor has a low battery.
   domain: automation
-  source_url: https://github.com/alexyao2015/homeassistantYAML/blob/master/blueprints/leak_annoucement.yaml
+  source_url: https://github.com/alexyao2015/homeassistantYAML/blob/master/blueprints/leak_annoucement_battery.yaml
   input:
-    input_leak_sensor:
-      name: Leak Sensor
-      description: The leak sensor to watch for leaks.
+    input_leak_sensor_battery:
+      name: Leak Sensor Battery
+      description: The leak sensor battery sensor to watch for low battery.
       selector:
         entity:
-          domain: binary_sensor
-          device_class: moisture
-    input_water_shutoff:
-      name: (Optional) Water Shutoff Valve
-      description: The water shutoff valve to turn off if a leak has been detected
-      default: ""
+          filter:
+            domain: sensor
+            device_class: battery
+    input_leak_sensor_battery_low_level:
+      name: Leak Sensor Battery Low Level
+      description: The percentage that the battery drops below to consider low and announce.
+      default: "10"
       selector:
-        entity:
-          domain: switch
+        number:
+          max: 100
+          min: 1
     input_announcement_count:
       name: Announcement Count
-      description: Number of times to announce a leak has occurred
-      default: "100"
+      description: Number of times to announce a the battery is low
+      default: "10"
       selector:
         number:
           min: 1
@@ -31,34 +33,28 @@ blueprint:
     input_announcement_delay:
       name: Announcement Delay
       description: Delay between each announcement
-      default: "00:01:00"
+      default: "00:10:00"
       selector:
         duration:
 mode: restart
 
 trigger_variables:
-  leak_sensor: !input input_leak_sensor
+  leak_sensor_battery: !input input_leak_sensor_battery
 trigger:
   - platform: template
-    value_template: "{{ states(leak_sensor) == 'on' }}"
+    value_template: "{{ (states(leak_sensor_battery) | int) < leak_sensor_battery_low_level }}"
 
 variables:
-  water_shutoff: !input input_water_shutoff
+  leak_sensor_battery_low_level_str: !input input_leak_sensor_battery_low_level
   announcement_count_str: !input input_announcement_count
   announcement_delay: !input input_announcement_delay
 
+  leak_sensor_battery_low_level: "{{ leak_sensor_battery_low_level_str | int }}"
   announcement_count: "{{ announcement_count_str | int }}"
   trigger_entity_id: "{{ trigger.entity_id }}"
   trigger_entity_name: "{{ trigger.to_state.attributes.friendly_name }}"
 
 action:
-  - choose:
-      - conditions: "{{ not not water_shutoff }}"
-        sequence:
-          - service: switch.turn_off
-            target:
-              entity_id: "{{ water_shutoff }}"
-
   - repeat:
       until:
         - condition: or
@@ -66,12 +62,14 @@ action:
             - condition: template
               value_template: "{{ repeat.index >= announcement_count }}"
             - condition: template
-              value_template: '{{ states(trigger_entity_id) == "off" }}'
+              value_template: '{{ (states(leak_sensor_battery) | int) > leak_sensor_battery_low_level }}'
       sequence:
         - service: script.turn_on
           data:
             variables:
-              message: "A leak was detected on the {{ trigger_entity_name }} sensor"
+              message: >-
+                The battery for {{ trigger_entity_name }} sensor is low.
+                It is currently at {{ states(leak_sensor_battery) }} percent.
           target:
             entity_id: script.notify_everywhere
         - delay: "{{ announcement_delay }}"
