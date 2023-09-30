@@ -93,11 +93,7 @@ blueprint:
 
     input_tts_service:
       name: (Optional) TTS Service
-      description: The service name to use for sending a notification using TTS.
-      default: ""
-    input_tts_speak_entity:
-      name: (Optional) TTS Speak Entity
-      description: Required if using speak as the tts_service. Specify the tts entity to use.
+      description: The service name to use for sending a notification using TTS. One of https://github.com/nimroddolev/chime_tts/wiki/chime_tts.say#tts_platform
       default: ""
     input_tts_volume_level:
       name: (Optional) TTS Volume Level
@@ -151,7 +147,6 @@ variables:
   enable_time_condition: !input input_enable_time_condition
 
   tts_service: !input input_tts_service
-  tts_speak_entity: !input input_tts_speak_entity
   tts_volume_level: !input input_tts_volume_level
   media_player_tts: !input input_media_player_tts
 
@@ -236,20 +231,15 @@ action:
             - choose:
                 - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}"
                   sequence:
-                    - alias: "Turn on every media_player"
-                      repeat:
-                        count: "{{ media_player_tts|length }}"
-                        sequence:
-                          - service: script.turn_on
-                            target:
-                              entity_id: "script.play_tts_at_volume"
-                            data:
-                              variables:
-                                media_player: "{{ media_player_tts[repeat.index - 1] }}"
-                                volume_level: "{{ tts_volume_level }}"
-                                tts_service: "tts.{{ tts_service }}"
-                                tts_speak_entity: "{{ tts_speak_entity }}"
-                                message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                    - service: script.turn_on
+                      target:
+                        entity_id: script.play_tts_at_volume
+                      data:
+                        variables:
+                          media_player: "{{ media_player_tts }}"
+                          volume_level: "{{ tts_volume_level }}"
+                          tts_service: "{{ tts_service }}"
+                          message: "A {{ label }} was detected on the {{ camera_name }} camera."
             # Android tv notification
             - choose:
                 - conditions: "{{ android_tv_services|length > 0 }}"

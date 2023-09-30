@@ -1,4 +1,82 @@
-# requires full entity ids
+play_single_tts_at_volume:
+  alias: Play Single TTS at Volume
+  mode: parallel
+  fields:
+    message:
+      name: "Message"
+      description: "Message to play using TTS"
+      required: true
+      selector:
+        text:
+    media_player:
+      name: "Media Player"
+      description: "The media player to play TTS on."
+      required: true
+      selector:
+        entity:
+          filter:
+            domain: media_player
+    volume_level:
+      name: "Volume Level"
+      description: "The volume to play TTS at."
+      required: true
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.05
+    tts_service:
+      name: "TTS Service"
+      description: "One of https://github.com/nimroddolev/chime_tts/wiki/chime_tts.say#tts_platform"
+      example: "tts.piper"
+      required: true
+      selector:
+        text:
+  sequence:
+  - choose:
+    - conditions: '{{ not not message and not not media_player and not not volume_level and not not tts_service }}'
+      sequence:
+        - choose:
+          - conditions: '{{ states(media_player) != "idle" }}'
+            sequence:
+            - service: media_player.turn_on
+              target:
+                entity_id: '{{ media_player }}'
+            - wait_template: '{{ states(media_player) == "idle" }}'
+              timeout: 00:00:05
+        - variables:
+            old_volume_level: '{{ state_attr(media_player, "volume_level") or volume_level
+              }}'
+        - service: media_player.volume_set
+          data:
+            volume_level: '{{ volume_level }}'
+          target:
+            entity_id: '{{ media_player }}'
+        - service: chime_tts.say
+          data:
+            chime_path: www/audio/alert.mp3
+            message: '{{ message }}'
+            tts_platform: '{{ tts_service }}'
+            announce: true
+          target:
+            entity_id: '{{ media_player }}'
+        - delay: 1
+        - wait_template: '{{ states(media_player) == "idle" }}'
+          timeout: 00:00:20
+        - service: media_player.volume_set
+          data:
+            volume_level: '{{ old_volume_level }}'
+          target:
+            entity_id: '{{ media_player }}'
+    default:
+    - service: system_log.write
+      data:
+        level: warning
+        logger: script.play_single_tts_at_volume
+        message: 'Not all variables were provided! message:  {{ message
+          }}; media_player: {{ media_player }}; volume_level: {{ volume_level }}; tts_service:
+          {{ tts_service }}'
 play_tts_at_volume:
   alias: Play TTS at Volume
   mode: parallel
@@ -15,7 +93,9 @@ play_tts_at_volume:
       required: true
       selector:
         entity:
-          domain: media_player
+          filter:
+            domain: media_player
+          multiple: true
     volume_level:
       name: "Volume Level"
       description: "The volume to play TTS at."
@@ -28,74 +108,35 @@ play_tts_at_volume:
           step: 0.05
     tts_service:
       name: "TTS Service"
-      description: "Full name of the TTS service to use for TTS."
-      example: "tts.speak"
+      description: "One of https://github.com/nimroddolev/chime_tts/wiki/chime_tts.say#tts_platform"
+      example: "tts.piper"
       required: true
       selector:
         text:
-    tts_speak_entity:
-      name: "TTS Speak Entity"
-      description: "Required if using tts.speak, specify the tts entity to use."
-      example: "tts.piper"
-      required: false
-      selector:
-        entity:
-          domain: tts
   sequence:
-    - choose:
-        - conditions: "{{ not not media_player and not not volume_level and not not tts_service and not not message }}"
-          sequence:
-            # turn on if not already on
-            - choose:
-                - conditions: "{{ states(media_player) != 'idle' }}"
-                  sequence:
-                    - service: media_player.turn_on
-                      target:
-                        entity_id: "{{ media_player }}"
-                    # Wait for idle with timeout
-                    - wait_template: "{{ states(media_player) == 'idle' }}"
-                      timeout: "00:00:05"
-            # store the current volume level
-            - variables:
-                old_volume_level: "{{ state_attr(media_player, 'volume_level') or volume_level }}"
-            # set the volume level
-            - service: media_player.volume_set
-              data:
-                volume_level: "{{ volume_level }}"
-              target:
-                entity_id: "{{ media_player }}"
-            # Pre alert sound
-            - service: media_player.play_media
-              data:
-                media_content_id: https://hassio.familynetworkcentral.com/local/audio/alert.wav
-                media_content_type: "music"
-              target:
-                entity_id: "{{ media_player }}"
-            - delay: 1
-            # Wait for idle with timeout
-            - wait_template: "{{ states(media_player) == 'idle' }}"
-              timeout: "00:00:10"
-            # start message
-            - service: python_script.play_tts
-              data:
-                media_player: "{{ media_player }}"
-                tts_service: "{{ tts_service }}"
-                tts_speak_entity: "{{ tts_speak_entity }}"
-                message: "{{ message }}"
-            - delay: 1
-            # Wait for idle with timeout
-            - wait_template: "{{ states(media_player) == 'idle' }}"
-              timeout: "00:00:10"
-            # set the volume level back
-            - service: media_player.volume_set
-              data:
-                volume_level: "{{ old_volume_level }}"
-              target:
-                entity_id: "{{ media_player }}"
-
-      default:
-        - service: system_log.write
-          data:
-            level: warning
-            logger: script.play_tts_at_volume
-            message: "Not all variables were provided! media_player:  {{ media_player }}; volume_level: {{ volume_level }}; tts_service: {{ tts_service }}; message: {{ message }}"
+  - choose:
+    - conditions: '{{ not not message and not not media_player and not not volume_level and not not tts_service }}'
+      sequence:
+        - alias: "Turn on every media_player"
+          repeat:
+            count: "{{ media_player|length }}"
+            sequence:
+              - variables:
+                  this_media_player: "{{ media_player[repeat.index - 1] }}"
+              - service: script.turn_on
+                target:
+                  entity_id: script.play_single_tts_at_volume
+                data:
+                  variables:
+                    media_player: "{{ this_media_player }}"
+                    volume_level: "{{ volume_level }}"
+                    tts_service: "{{ tts_service }}"
+                    message: "{{ message }}"
+    default:
+    - service: system_log.write
+      data:
+        level: warning
+        logger: script.play_tts_at_volume
+        message: 'Not all variables were provided! message:  {{ message
+          }}; media_player: {{ media_player }}; volume_level: {{ volume_level }}; tts_service:
+          {{ tts_service }}'
