@@ -113,14 +113,20 @@ blueprint:
       description: A list (-) of media players you wish to use for TTS, including media_player.
       default: []
       selector:
-        object:
+        entity:
+          filter:
+            domain: "media_player"
+          multiple: true
 
     input_android_tv_services:
       name: (Optional) Android TV Services
-      description: A list (-) of TV Notifications for Android TV service names, excluding notify.
+      description: A list (-) of TV Notifications for Android TV service names.
       default: []
       selector:
-        object:
+        entity:
+          filter:
+            domain: "notify"
+          multiple: true
 
 mode: parallel
 max: 10
@@ -149,7 +155,7 @@ variables:
   tts_volume_level: !input input_tts_volume_level
   media_player_tts: !input input_media_player_tts
 
-  android_tv_services_input: !input input_android_tv_services
+  android_tv_services: !input input_android_tv_services
 
   camera_name: "{{ trigger.payload_json['after']['camera'] | replace('_', ' ') | title }}"
   id: "{{ trigger.payload_json['after']['id'] }}"
