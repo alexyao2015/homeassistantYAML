@@ -306,19 +306,6 @@ action:
         - condition: template
           value_template: "{{ not trigger_objects|length or object in trigger_objects }}"
         - parallel:
-            # persistent notification
-            # web UI
-            - choose:
-                - conditions: "{{ integrated_notification }}"
-                  sequence:
-                    - service: persistent_notification.create
-                      data:
-                        title: "A {{ label }} was detected on the {{ camera_name }} camera."
-                        message: >
-                          <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
-                          ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
-                        notification_id: "frigate_{{ id }}"
-                    - service: persistent_notification_prune.dismiss_old_notifications
             # Send web UI notification
             - choose:
                 - conditions: "{{ integrated_notification }}" # web UI
@@ -330,6 +317,7 @@ action:
                           <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
                           ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
                         notification_id: "frigate_{{ id }}"
+                    - service: persistent_notification_prune.dismiss_old_notifications
             # Signal Notification
             - choose:
                 - conditions: "{{ not not signal_service }}"
