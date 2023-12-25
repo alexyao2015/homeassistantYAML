@@ -1,0 +1,10 @@
+{
+  "domain": "persistent_notification_prune",
+  "name": "Persistent Notification Prune",
+  "documentation": "https://github.com/alexyao2015",
+  "iot_class": "system",
+  "issue_tracker": "https://github.com/alexyao2015",
+  "version": "0.0.1",
+  "config_flow": true,
+  "codeowners": ["@alexyao2015"]
+}

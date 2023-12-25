@@ -1,0 +1,18 @@
+{
+  "services": {
+    "dismiss_old_notifications": {
+      "name": "Dismiss Old Notifications",
+      "description": "Remove old notifications.",
+      "fields": {
+        "keep_days": {
+          "name": "Days to keep",
+          "description": "Number of days to keep the notifications. Notifications older than this many days will be removed. Defaults to 1 day."
+        },
+        "notification_id_filter": {
+          "name": "Notification ID Filter",
+          "description": "Only remove notifications that contain this string in it's ID."
+        }
+      }
+    }
+  }
+}

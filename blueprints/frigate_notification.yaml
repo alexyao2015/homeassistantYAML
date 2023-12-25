@@ -67,6 +67,15 @@ blueprint:
       default: false
       selector:
         boolean:
+    input_integrated_notification_keep_days:
+      name: (Optional) Days to keep integrated notifications
+      description: Number of days to keep the integrated notifications before pruning. Defaults to 1.
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 365
+          unit_of_measurement: days
     input_signal_service:
       name: (Optional) Signal Service
       description: The service to use for sending a notification using Signal Messenger.
@@ -142,6 +151,7 @@ variables:
   input_trigger_objects: !input input_trigger_objects
   presence_entity: !input input_presence_entity
   integrated_notification: !input input_integrated_notification
+  keep_days: !input input_integrated_notification_keep_days
   signal_service: !input input_signal_service
   enable_time_condition: !input input_enable_time_condition
 
@@ -226,6 +236,9 @@ action:
                         message: "![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)"
                         notification_id: "frigate_{{ id }}"
                     - service: persistent_notification_prune.dismiss_old_notifications
+                      data:
+                        keep_days: "{{ keep_days }}"
+                        notification_id_filter: frigate_
             # TTS
             - choose:
                 - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}"
@@ -318,6 +331,9 @@ action:
                           ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
                         notification_id: "frigate_{{ id }}"
                     - service: persistent_notification_prune.dismiss_old_notifications
+                      data:
+                        keep_days: "{{ keep_days }}"
+                        notification_id_filter: frigate_
             # Signal Notification
             - choose:
                 - conditions: "{{ not not signal_service }}"
