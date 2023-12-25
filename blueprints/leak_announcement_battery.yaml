@@ -33,13 +33,18 @@ blueprint:
     input_announcement_delay:
       name: Announcement Delay
       description: Delay between each announcement
-      default: "00:10:00"
+      default:
+        hours: 0
+        minutes: 10
+        seconds: 0
       selector:
         duration:
 mode: restart
 
 trigger_variables:
   leak_sensor_battery: !input input_leak_sensor_battery
+  leak_sensor_battery_low_level_str: !input input_leak_sensor_battery_low_level
+  leak_sensor_battery_low_level: "{{ leak_sensor_battery_low_level_str | int }}"
 trigger:
   - platform: template
     value_template: "{{ (states(leak_sensor_battery) | int) < leak_sensor_battery_low_level }}"
