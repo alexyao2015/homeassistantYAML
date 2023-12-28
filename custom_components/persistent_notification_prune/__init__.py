@@ -35,8 +35,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             created_date: datetime = notification[ATTR_CREATED_AT]
             if created_date.timestamp() < oldest_date.timestamp():
                 dismiss_ids.append(notification_id)
-        for id in dismiss_ids:
-            async_dismiss(hass, notification_id)
+        for dismiss_id in dismiss_ids:
+            async_dismiss(hass, dismiss_id)
 
     hass.services.async_register(
         DOMAIN,

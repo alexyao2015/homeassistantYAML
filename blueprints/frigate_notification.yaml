@@ -69,7 +69,7 @@ blueprint:
         boolean:
     input_integrated_notification_keep_days:
       name: (Optional) Days to keep integrated notifications
-      description: Number of days to keep the integrated notifications before pruning. Defaults to 1.
+      description: Number of days to keep the integrated notifications before pruning.
       default: 1
       selector:
         number:
