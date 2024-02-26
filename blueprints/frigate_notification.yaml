@@ -60,7 +60,15 @@ blueprint:
       default: ""
       selector:
         entity:
-
+    input_max_runtime_minutes:
+      name: (Optional) Max Runtime
+      description: The automation will run for this many minutes if it sends a notification.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 60
+          unit_of_measurement: minutes
     input_integrated_notification:
       name: (Optional) Integrated Web UI Notifications
       description: Show notification in Web UI (must have automation to clear old notifications installed)
@@ -129,11 +137,11 @@ blueprint:
       name: (Optional) Android TV Services
       description: A list (-) of TV Notifications for Android TV service names. (e.g. notify.my_android_tv)
       default: []
-      selector: 
-        object: 
+      selector:
+        object:
 
-mode: parallel
-max: 10
+mode: single
+max_exceeded: silent
 
 trigger_variables:
   camera: !input input_camera
@@ -154,6 +162,7 @@ variables:
   keep_days: !input input_integrated_notification_keep_days
   signal_service: !input input_signal_service
   enable_time_condition: !input input_enable_time_condition
+  max_runtime_minutes: !input input_max_runtime_minutes
 
   tts_service: !input input_tts_service
   tts_volume_level: !input input_tts_volume_level
@@ -177,6 +186,8 @@ condition:
         before: !input input_time_condition_end
         after: !input input_time_condition_start
 action:
+  - variables:
+      max_runtime: "{{ now() + timedelta(minutes=max_runtime_minutes) }}"
   # initially send notification immediately after event is triggered
   - repeat:
       sequence:
@@ -272,90 +283,110 @@ action:
                         data:
                           urls:
                             - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-        - condition: template
-          value_template: "{{ repeat_trigger.payload_json['type'] == 'end' }}"
-        - stop: "Event ended on first trigger"
-          error: true
       until:
         # stop when the event ends or if the event triggered a notification
         - or:
             - condition: template
               value_template: |
-                  {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
-                  {{ repeat_trigger.payload_json['type'] == 'end' }}
+                {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+                {{ repeat_trigger.payload_json['type'] == 'end' }}
             # have to repeat conditions because script variables except for wait and trigger
             # can't be accessed in the until condition
             - and:
-              - condition: template
-                value_template: |
-                  {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
-                  {% set entered_zones = repeat_trigger.payload_json['after']['entered_zones'] %}
-                  {{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}
-              - condition: template
-                value_template: |
-                  {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
-                  {% set object = repeat_trigger.payload_json['after']['label'] %}
-                  {{ not trigger_objects|length or object in trigger_objects }}
-
-  - repeat:
-      sequence:
-        - wait_for_trigger:
-            - platform: mqtt
-              topic: frigate/events
-              payload: "{{ id }}"
-              value_template: "{{ value_json['after']['id'] }}"
-          timeout:
-            minutes: 2
-          continue_on_timeout: false
-        - variables:
-            entered_zones: "{{ wait.trigger.payload_json['after']['entered_zones'] }}"
-            object: "{{ wait.trigger.payload_json['after']['label'] }}"
-            label: "{{ object | title }}"
-            detection_score: "{{ wait.trigger.payload_json['after']['top_score'] }}"
-        - condition: template
-          value_template: "{{ wait.trigger.payload_json['type'] == 'end' }}"
-        - condition: template
-          value_template: "{{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}"
-        - condition: template
-          value_template: "{{ not trigger_objects|length or object in trigger_objects }}"
-        - parallel:
-            # Send web UI notification
-            - choose:
-                - conditions: "{{ integrated_notification }}" # web UI
-                  sequence:
-                    - service: persistent_notification.create
-                      data:
-                        title: "A {{ label }} was detected on the {{ camera_name }} camera."
-                        message: >
-                          <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
-                          ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
-                        notification_id: "frigate_{{ id }}"
-                    - service: persistent_notification_prune.dismiss_old_notifications
-                      data:
-                        keep_days: "{{ keep_days }}"
-                        notification_id_filter: frigate_
-            # Signal Notification
-            - choose:
-                - conditions: "{{ not not signal_service }}"
-                  sequence:
-                    - service: "notify.{{ signal_service }}"
-                      data:
-                        message: >
-                          2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
-                          {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
-                        data:
-                          urls:
-                            - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-            # Android tv notification
-            - choose:
-                - conditions: "{{ android_tv_services|length > 0 }}"
-                  sequence:
-                    - service: python_script.send_android_tv_notifications
-                      data:
-                        services: "{{ android_tv_services }}"
-                        title: Security Alert
-                        message: "A {{ label }} was detected on the {{ camera_name }} camera."
-                        image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-      until:
-        - condition: template
-          value_template: "{{ wait.trigger.payload_json['type'] == 'end' }}"
+                - condition: template
+                  value_template: |
+                    {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+                    {% set entered_zones = repeat_trigger.payload_json['after']['entered_zones'] %}
+                    {{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}
+                - condition: template
+                  value_template: |
+                    {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+                    {% set object = repeat_trigger.payload_json['after']['label'] %}
+                    {{ not trigger_objects|length or object in trigger_objects }}
+  - if:
+      # an object was detected and a notification was sent
+      - and:
+          - condition: template
+            value_template: |
+              {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+              {% set entered_zones = repeat_trigger.payload_json['after']['entered_zones'] %}
+              {{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}
+          - condition: template
+            value_template: |
+              {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+              {% set object = repeat_trigger.payload_json['after']['label'] %}
+              {{ not trigger_objects|length or object in trigger_objects }}
+    then:
+      - if:
+          # this event has not ended
+          - condition: template
+            value_template: |
+              {% set repeat_trigger = wait.trigger if wait is defined else trigger %}
+              {{ repeat_trigger.payload_json['type'] != 'end' }}
+        then:
+          - repeat:
+              sequence:
+                - wait_for_trigger:
+                    - platform: mqtt
+                      topic: frigate/events
+                      payload: "{{ id }}"
+                      value_template: "{{ value_json['after']['id'] }}"
+                  timeout:
+                    minutes: 2
+                  continue_on_timeout: false
+                - variables:
+                    entered_zones: "{{ wait.trigger.payload_json['after']['entered_zones'] }}"
+                    object: "{{ wait.trigger.payload_json['after']['label'] }}"
+                    label: "{{ object | title }}"
+                    detection_score: "{{ wait.trigger.payload_json['after']['top_score'] }}"
+                - condition: template
+                  value_template: "{{ wait.trigger.payload_json['type'] == 'end' }}"
+                - condition: template
+                  value_template: "{{ not zones|length or zones|select('in', entered_zones)|list|length > 0 }}"
+                - condition: template
+                  value_template: "{{ not trigger_objects|length or object in trigger_objects }}"
+                - parallel:
+                    # Send web UI notification
+                    - choose:
+                        - conditions: "{{ integrated_notification }}" # web UI
+                          sequence:
+                            - service: persistent_notification.create
+                              data:
+                                title: "A {{ label }} was detected on the {{ camera_name }} camera."
+                                message: >
+                                  <a href="{{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4" target="_blank">Click to View the Clip</a>
+                                  ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
+                                notification_id: "frigate_{{ id }}"
+                            - service: persistent_notification_prune.dismiss_old_notifications
+                              data:
+                                keep_days: "{{ keep_days }}"
+                                notification_id_filter: frigate_
+                    # Signal Notification
+                    - choose:
+                        - conditions: "{{ not not signal_service }}"
+                          sequence:
+                            - service: "notify.{{ signal_service }}"
+                              data:
+                                message: >
+                                  2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
+                                  {{base_url}}/api/frigate/notifications/{{id}}/{{camera}}/clip.mp4
+                                data:
+                                  urls:
+                                    - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+                    # Android tv notification
+                    - choose:
+                        - conditions: "{{ android_tv_services|length > 0 }}"
+                          sequence:
+                            - service: python_script.send_android_tv_notifications
+                              data:
+                                services: "{{ android_tv_services }}"
+                                title: Security Alert
+                                message: "A {{ label }} was detected on the {{ camera_name }} camera."
+                                image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+              until:
+                - condition: template
+                  value_template: "{{ wait.trigger.payload_json['type'] == 'end' or now() >= (max_runtime | as_datetime) }}"
+      # run a delay iif a notification was ran and the event is not over
+      - delay: |
+          {% set time_remaining = (max_runtime | as_datetime).timestamp() - now().timestamp() %}
+          {{ time_remaining if time_remaining > 0 else 0 }}
