@@ -31,10 +31,7 @@ blueprint:
     input_camera:
       name: Frigate Camera
       description: The name of the camera as defined in your frigate configuration.
-      selector:
-        entity:
-          filter:
-            domain: camera
+      default: ""
     input_base_url:
       name: (Optional) Base URL
       description: >
