@@ -140,7 +140,7 @@ blueprint:
     input_frigate_upload:
       name: (Optional) Upload events to frigate plus
       description: Upload all events from this camera to frigate plus
-      default: true
+      default: false
       selector:
         boolean:
 
