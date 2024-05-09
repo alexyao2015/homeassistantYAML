@@ -398,7 +398,7 @@ action:
                                 title: Security Alert
                                 message: "A {{ label }} was detected on the {{ camera_name }} camera."
                                 image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-                    # Upload to frigte plus
+                    # Upload to frigate plus
                     - choose:
                         - conditions: "{{ frigate_upload }}"
                           sequence:
