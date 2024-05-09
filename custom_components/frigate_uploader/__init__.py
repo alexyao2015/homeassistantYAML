@@ -52,6 +52,10 @@ async def upload_to_frigate_plus(
                 data=json.dumps({"include_annotation": 0}),
                 allow_redirects=True,
             )
+            if response.status == 404:
+                # Suppress 404 error because this may be called multiple times
+                _LOGGER.debug("Unable to upload event %s because it does not exist.", event_id)
+                return None
             response.raise_for_status()
             _LOGGER.debug("Uploaded event %s to frigate plus", event_id)
     except (TimeoutError, aiohttp.ClientError, ClientResponseError) as ex:
