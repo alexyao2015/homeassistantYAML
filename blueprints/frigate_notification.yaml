@@ -140,7 +140,7 @@ blueprint:
     input_frigate_upload:
       name: (Optional) Upload events to frigate plus
       description: Upload all events from this camera to frigate plus
-      default: false
+      default: true
       selector:
         boolean:
 
@@ -248,11 +248,13 @@ action:
                 - conditions: "{{ integrated_notification }}"
                   sequence:
                     - service: persistent_notification.create
+                      continue_on_error: true
                       data:
                         title: "A {{ label }} was detected on the {{ camera_name }} camera."
                         message: "![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)"
                         notification_id: "frigate_{{ id }}"
                     - service: persistent_notification_prune.dismiss_old_notifications
+                      continue_on_error: true
                       data:
                         keep_days: "{{ keep_days }}"
                         notification_id_filter: frigate_
@@ -261,6 +263,7 @@ action:
                 - conditions: "{{ media_player_tts|length > 0 and not not tts_service }}"
                   sequence:
                     - service: script.turn_on
+                      continue_on_error: true
                       target:
                         entity_id: script.play_tts_at_volume
                       data:
@@ -274,6 +277,7 @@ action:
                 - conditions: "{{ android_tv_services|length > 0 }}"
                   sequence:
                     - service: python_script.send_android_tv_notifications
+                      continue_on_error: true
                       data:
                         services: "{{ android_tv_services }}"
                         title: Security Alert
@@ -284,6 +288,7 @@ action:
                 - conditions: "{{ not not signal_service }}"
                   sequence:
                     - service: "notify.{{ signal_service }}"
+                      continue_on_error: true
                       data:
                         message: "1. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}."
                         data:
@@ -294,6 +299,7 @@ action:
                 - conditions: "{{ frigate_upload }}"
                   sequence:
                     - service: frigate_uploader.upload_to_frigate_plus
+                      continue_on_error: true
                       data:
                         frigate_event_id: "{{ id }}"
       until:
@@ -364,6 +370,7 @@ action:
                         - conditions: "{{ integrated_notification }}" # web UI
                           sequence:
                             - service: persistent_notification.create
+                              continue_on_error: true
                               data:
                                 title: "A {{ label }} was detected on the {{ camera_name }} camera."
                                 message: >
@@ -371,6 +378,7 @@ action:
                                   ![image]({{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg)
                                 notification_id: "frigate_{{ id }}"
                             - service: persistent_notification_prune.dismiss_old_notifications
+                              continue_on_error: true
                               data:
                                 keep_days: "{{ keep_days }}"
                                 notification_id_filter: frigate_
@@ -379,6 +387,7 @@ action:
                         - conditions: "{{ not not signal_service }}"
                           sequence:
                             - service: "notify.{{ signal_service }}"
+                              continue_on_error: true
                               data:
                                 message: >
                                   2. A {{ label }} was detected on the {{ camera_name }} camera with a score of {{ detection_score }}.
@@ -391,6 +400,7 @@ action:
                         - conditions: "{{ android_tv_services|length > 0 }}"
                           sequence:
                             - service: python_script.send_android_tv_notifications
+                              continue_on_error: true
                               data:
                                 services: "{{ android_tv_services }}"
                                 title: Security Alert
