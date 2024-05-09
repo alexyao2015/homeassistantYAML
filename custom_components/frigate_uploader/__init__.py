@@ -10,14 +10,11 @@ import logging
 import aiohttp
 from aiohttp import ClientResponseError
 
-from homeassistant.components.frigate_uploader.const import (
-    ATTR_FRIGATE_URL,
-    DOMAIN,
-    SERVICE_NAME_UPLOAD_TO_FRIGATE_PLUS,
-)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import aiohttp_client
+
+from .const import ATTR_FRIGATE_URL, DOMAIN, SERVICE_NAME_UPLOAD_TO_FRIGATE_PLUS
 
 _LOGGER = logging.getLogger(__name__)
 

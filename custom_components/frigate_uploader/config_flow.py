@@ -3,8 +3,9 @@
 from slugify import slugify
 import voluptuous as vol
 
-from homeassistant.components.frigate_uploader.const import ATTR_FRIGATE_URL, DOMAIN
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+
+from .const import ATTR_FRIGATE_URL, DOMAIN
 
 
 class FrigateUploaderConfigFlow(ConfigFlow, domain=DOMAIN):
