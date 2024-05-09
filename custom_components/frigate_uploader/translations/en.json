@@ -1,0 +1,27 @@
+{
+    "config": {
+        "error": {
+            "invalid_url": "Invalid url"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "frigate_url": "URL"
+                },
+                "description": "Frigate URL"
+            }
+        }
+    },
+    "services": {
+        "upload_to_frigate_plus": {
+            "description": "Upload a specific event id to frigate plus.",
+            "fields": {
+                "frigate_event_id": {
+                    "description": "The event id stored in frigate.",
+                    "name": "Frigate Event ID"
+                }
+            },
+            "name": "Upload to Frigate Plus"
+        }
+    }
+}

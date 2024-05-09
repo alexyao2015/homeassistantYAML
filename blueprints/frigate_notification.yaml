@@ -137,6 +137,13 @@ blueprint:
       selector:
         object:
 
+    input_frigate_upload:
+      name: (Optional) Upload events to frigate plus
+      description: Upload all events from this camera to frigate plus
+      default: false
+      selector:
+        boolean:
+
 mode: single
 max_exceeded: silent
 
@@ -166,6 +173,8 @@ variables:
   media_player_tts: !input input_media_player_tts
 
   android_tv_services: !input input_android_tv_services
+
+  frigate_upload: !input input_frigate_upload
 
   camera_name: "{{ trigger.payload_json['after']['camera'] | replace('_', ' ') | title }}"
   id: "{{ trigger.payload_json['after']['id'] }}"
@@ -280,6 +289,13 @@ action:
                         data:
                           urls:
                             - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+            # Upload to frigte plus
+            - choose:
+                - conditions: "{{ frigate_upload }}"
+                  sequence:
+                    - service: frigate_uploader.upload_to_frigate_plus
+                      data:
+                        frigate_event_id: "{{ id }}"
       until:
         # stop when the event ends or if the event triggered a notification
         - or:

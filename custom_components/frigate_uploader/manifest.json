@@ -1,0 +1,11 @@
+{
+  "domain": "frigate_uploader",
+  "name": "Frigate Uploader",
+  "codeowners": ["@alexyao2015"],
+  "config_flow": true,
+  "documentation": "https://github.com/alexyao2015",
+  "iot_class": "assumed_state",
+  "issue_tracker": "https://github.com/alexyao2015",
+  "single_config_entry": true,
+  "version": "0.0.1"
+}

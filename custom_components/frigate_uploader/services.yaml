@@ -1,0 +1,5 @@
+upload_to_frigate_plus:
+  fields:
+    frigate_event_id:
+      selector:
+        text:

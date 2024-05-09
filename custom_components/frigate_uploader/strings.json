@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Frigate URL",
+        "data": {
+          "frigate_url": "[%key:common::config_flow::data::url%]"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Invalid url"
+    }
+  },
+  "services": {
+    "upload_to_frigate_plus": {
+      "name": "Upload to Frigate Plus",
+      "description": "Upload a specific event id to frigate plus.",
+      "fields": {
+        "frigate_event_id": {
+          "name": "Frigate Event ID",
+          "description": "The event id stored in frigate."
+        }
+      }
+    }
+  }
+}
