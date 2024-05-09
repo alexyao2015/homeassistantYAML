@@ -294,6 +294,14 @@ action:
                         data:
                           urls:
                             - "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
+            # Upload to frigate plus
+            - choose:
+                - conditions: "{{ frigate_upload }}"
+                  sequence:
+                    - service: frigate_uploader.upload_to_frigate_plus
+                      continue_on_error: true
+                      data:
+                        frigate_event_id: "{{ id }}"
       until:
         # stop when the event ends or if the event triggered a notification
         - or:
@@ -398,7 +406,7 @@ action:
                                 title: Security Alert
                                 message: "A {{ label }} was detected on the {{ camera_name }} camera."
                                 image_url: "{{base_url}}/api/frigate/notifications/{{id}}/snapshot.jpg"
-                    # Upload to frigate plus
+                    # Upload to frigte plus
                     - choose:
                         - conditions: "{{ frigate_upload }}"
                           sequence:
