@@ -144,7 +144,8 @@ blueprint:
       selector:
         boolean:
 
-mode: single
+mode: parallel
+max: 10
 max_exceeded: silent
 
 trigger_variables:
@@ -418,6 +419,14 @@ action:
                 - condition: template
                   value_template: "{{ wait.trigger.payload_json['type'] == 'end' or now() >= (max_runtime | as_datetime) }}"
       # run a delay iif a notification was ran and the event is not over
+      - service: automation.turn_off
+        target:
+          entity_id: "{{ this.entity_id }}"
+        data:
+          stop_actions: false
       - delay: |
           {% set time_remaining = (max_runtime | as_datetime).timestamp() - now().timestamp() %}
           {{ time_remaining if time_remaining > 0 else 0 }}
+      - service: automation.turn_on
+        target:
+          entity_id: "{{ this.entity_id }}"
